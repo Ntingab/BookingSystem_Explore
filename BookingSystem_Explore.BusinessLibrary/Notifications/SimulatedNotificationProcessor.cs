@@ -21,14 +21,14 @@ namespace BookingSystem_Explore.BusinessLibrary.Notifications
             try
             {
                 notification.SentDate = DateTime.UtcNow;
-                notification.Status = NotificationStatus.SimulatedSent.ToString();
+                notification.Status = NotificationStatus.SimulatedSent;
                 await _notificationRepository.UpdateAsync(notification, cancellationToken);
                 _logger.LogInformation("Simulated notification {NotificationId} sent", notification.NotificationId);
             }
             catch (Exception ex)
             {
                 notification.ErrorMessage = ex.Message;
-                notification.Status = NotificationStatus.Failed.ToString();
+                notification.Status = NotificationStatus.Failed;
                 try { await _notificationRepository.UpdateAsync(notification, cancellationToken); } catch { }
                 _logger.LogError(ex, "Simulated notification failed {NotificationId}", notification.NotificationId);
             }

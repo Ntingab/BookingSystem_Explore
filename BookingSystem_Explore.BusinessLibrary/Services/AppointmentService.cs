@@ -173,7 +173,7 @@ namespace BookingSystem_Explore.BusinessLibrary.Services
                 throw new BookingSystem_Explore.BusinessLibrary.Exceptions.UnauthorizedAppointmentAccessException("Invalid management token");
             }
 
-            if (appointment.Status != BookingSystem_Explore.Infrastructure.Enums.AppointmentStatus.Confirmed)
+            if (appointment.Status != BookingSystem_Explore.Domain.Enums.AppointmentStatus.Confirmed)
             {
                 throw new InvalidOperationException("Only confirmed appointments can be cancelled");
             }
@@ -185,7 +185,7 @@ namespace BookingSystem_Explore.BusinessLibrary.Services
             }
 
             // perform cancellation
-            appointment.Status = BookingSystem_Explore.Infrastructure.Enums.AppointmentStatus.Cancelled;
+            appointment.Status = BookingSystem_Explore.Domain.Enums.AppointmentStatus.Cancelled;
             appointment.CancelledDate = DateTime.UtcNow;
             appointment.UpdatedDate = DateTime.UtcNow;
 
@@ -194,11 +194,11 @@ namespace BookingSystem_Explore.BusinessLibrary.Services
             {
                 NotificationId = Guid.NewGuid(),
                 AppointmentId = appointment.AppointmentId,
-                NotificationType = BookingSystem_Explore.Infrastructure.Enums.NotificationType.BookingCancellation,
-                Channel = BookingSystem_Explore.Infrastructure.Enums.NotificationChannel.Email,
+                NotificationType = BookingSystem_Explore.Domain.Enums.NotificationType.BookingCancellation,
+                Channel = BookingSystem_Explore.Domain.Enums.NotificationChannel.Email,
                 Recipient = appointment.Customer?.EmailAddress ?? string.Empty,
                 Message = "Pending cancellation",
-                Status = BookingSystem_Explore.Infrastructure.Enums.NotificationStatus.Pending,
+                Status = BookingSystem_Explore.Domain.Enums.NotificationStatus.Pending,
                 CreatedDate = DateTime.UtcNow
             };
 

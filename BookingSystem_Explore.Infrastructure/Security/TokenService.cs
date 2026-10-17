@@ -4,7 +4,7 @@ using System.Text;
 
 namespace BookingSystem_Explore.Infrastructure.Security
 {
-    public class TokenService : ITokenService
+    public class TokenService : BookingSystem_Explore.Domain.Security.ITokenService
     {
         public string GenerateToken()
         {

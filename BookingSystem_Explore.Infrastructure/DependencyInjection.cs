@@ -25,9 +25,7 @@ namespace BookingSystem_Explore.Infrastructure
             services.AddScoped<BookingSystem_Explore.Domain.Interfaces.IUnitOfWork, EfUnitOfWork>();
 
             // Token service: implement Domain.Security.ITokenService
-            // Infrastructure TokenService implements Domain.Security.ITokenService. The Infrastructure ITokenService
-            // duplicate caused type mismatch; register implementation via factory to avoid compile-time generic constraint.
-            services.AddSingleton<BookingSystem_Explore.Domain.Security.ITokenService>(_ => new TokenService());
+            services.AddSingleton<BookingSystem_Explore.Domain.Security.ITokenService, TokenService>();
 
             return services;
         }
