@@ -1,11 +1,7 @@
-using Microsoft.Extensions.DependencyInjection;
 using BookingSystem_Explore.BusinessLibrary.Interfaces.Services;
-using BookingSystem_Explore.BusinessLibrary.Services;
-using BookingSystem_Explore.BusinessLibrary.Repositories;
 using BookingSystem_Explore.BusinessLibrary.Notifications;
-using BookingSystem_Explore.Domain.Security;
-using BookingSystem_Explore.Domain.Interfaces.Repositories;
-using BookingSystem_Explore.BusinessLibrary.Interfaces;
+using BookingSystem_Explore.BusinessLibrary.Services;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace BookingSystem_Explore.BusinessLibrary
 {

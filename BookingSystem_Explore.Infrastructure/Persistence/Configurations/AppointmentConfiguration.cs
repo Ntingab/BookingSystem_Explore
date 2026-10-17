@@ -1,7 +1,6 @@
+using BookingSystem_Explore.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using BookingSystem_Explore.Domain.Entities;
-using BookingSystem_Explore.Domain.Enums;
 
 namespace BookingSystem_Explore.Infrastructure.Persistence.Configurations
 {

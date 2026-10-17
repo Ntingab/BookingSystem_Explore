@@ -1,4 +1,3 @@
-using System;
 using BookingSystem_Explore.Domain.Enums;
 
 namespace BookingSystem_Explore.Domain.Entities

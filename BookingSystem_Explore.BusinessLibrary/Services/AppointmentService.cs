@@ -1,13 +1,10 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
 using BookingSystem_Explore.BusinessLibrary.DTOs.Requests;
 using BookingSystem_Explore.BusinessLibrary.DTOs.Responses;
-using BookingSystem_Explore.Domain.Interfaces.Repositories;
 using BookingSystem_Explore.BusinessLibrary.Interfaces.Services;
-using BookingSystem_Explore.Domain.Security;
 using BookingSystem_Explore.Domain.Entities;
+using BookingSystem_Explore.Domain.Interfaces.Repositories;
+using BookingSystem_Explore.Domain.Security;
+using Microsoft.Extensions.Logging;
 
 namespace BookingSystem_Explore.BusinessLibrary.Services
 {

@@ -1,10 +1,6 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
-using BookingSystem_Explore.Domain.Interfaces.Repositories;
 using BookingSystem_Explore.Domain.Entities;
 using BookingSystem_Explore.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 
 namespace BookingSystem_Explore.Infrastructure.Repositories
 {

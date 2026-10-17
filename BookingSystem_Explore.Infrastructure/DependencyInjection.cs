@@ -1,10 +1,9 @@
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.EntityFrameworkCore;
 using BookingSystem_Explore.Infrastructure.Persistence;
-using BookingSystem_Explore.Domain.Interfaces.Repositories;
 using BookingSystem_Explore.Infrastructure.Repositories;
 using BookingSystem_Explore.Infrastructure.Security;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace BookingSystem_Explore.Infrastructure
 {

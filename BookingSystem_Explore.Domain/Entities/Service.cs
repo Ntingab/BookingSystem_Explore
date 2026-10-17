@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-
 namespace BookingSystem_Explore.Domain.Entities
 {
     public class Service
