@@ -34,7 +34,16 @@ namespace BookingSystem_Explore.Infrastructure.Repositories
 
         public async Task<Appointment?> GetByReferenceAsync(string reference, CancellationToken cancellationToken)
         {
-            return await _db.Appointments.FirstOrDefaultAsync(a => a.AppointmentReference == reference, cancellationToken);
+            return await _db.Appointments
+                .Include(a => a.AppointmentSlot)
+                    .ThenInclude(s => s.BranchService)
+                        .ThenInclude(bs => bs.Branch)
+                .Include(a => a.AppointmentSlot)
+                    .ThenInclude(s => s.BranchService)
+                        .ThenInclude(bs => bs.Service)
+                .Include(a => a.Customer)
+                .Include(a => a.Notifications)
+                .FirstOrDefaultAsync(a => a.AppointmentReference == reference, cancellationToken);
         }
 
         public async Task<bool> IsSlotOccupiedAsync(Guid appointmentSlotId, CancellationToken cancellationToken)

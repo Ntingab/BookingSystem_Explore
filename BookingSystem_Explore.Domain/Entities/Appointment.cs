@@ -12,7 +12,8 @@ namespace BookingSystem_Explore.Domain.Entities
         public AppointmentStatus Status { get; set; } = AppointmentStatus.Pending;
         public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
         public string? Notes { get; set; }
-        public string? ManagementTokenHash { get; set; }
+        // Persisted hash of the management token. Make non-nullable so DB column is required.
+        public string ManagementTokenHash { get; set; } = string.Empty;
         public AppointmentSlot? AppointmentSlot { get; set; }
         public Customer? Customer { get; set; }
         public ICollection<Notification>? Notifications { get; set; }

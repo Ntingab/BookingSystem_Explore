@@ -16,7 +16,7 @@ namespace BookingSystem_Explore.Infrastructure.Persistence.Configurations
             builder.Property(a => a.CreatedDate).IsRequired();
             builder.Property(a => a.UpdatedDate);
             builder.Property(a => a.CancelledDate);
-            builder.Property(a => a.ManagementTokenHash).HasMaxLength(256);
+            builder.Property(a => a.ManagementTokenHash).IsRequired().HasMaxLength(256);
 
             builder.HasIndex(a => a.AppointmentReference).IsUnique();
 
