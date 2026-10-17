@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>831aea85-1f51-44cc-9f96-5d7eed11e22f</UserSecretsId>
+    <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.13" />
+    <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.24.2-preview.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\BookingSystem_Explore.BusinessLibrary\BookingSystem_Explore.BusinessLibrary.csproj" />
+    <ProjectReference Include="..\BookingSystem_Explore.Infrastructure\BookingSystem_Explore.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>
