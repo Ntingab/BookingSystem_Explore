@@ -22,8 +22,34 @@ namespace BookingSystem_Explore.Tests
                     // replace real DbContext with in-memory for tests
                     var descriptor = services.SingleOrDefault(d => d.ServiceType == typeof(DbContextOptions<AppointmentBookingDbContext>));
                     if (descriptor != null) services.Remove(descriptor);
-
                     services.AddDbContext<AppointmentBookingDbContext>(options => options.UseInMemoryDatabase("integration_db"));
+
+                    // Seed deterministic data for integration tests
+                    var sp = services.BuildServiceProvider();
+                    using (var scope = sp.CreateScope())
+                    {
+                        var db = scope.ServiceProvider.GetRequiredService<AppointmentBookingDbContext>();
+                        // ensure database is created
+                        db.Database.EnsureCreated();
+
+                        var store = new BookingSystem_Explore.BusinessLibrary.Repositories.InMemoryDataStore();
+
+                        // clear existing
+                        db.Branches.RemoveRange(db.Branches);
+                        db.Services.RemoveRange(db.Services);
+                        db.BranchServices.RemoveRange(db.BranchServices);
+                        db.AppointmentSlots.RemoveRange(db.AppointmentSlots);
+                        db.Notifications.RemoveRange(db.Notifications);
+                        db.Appointments.RemoveRange(db.Appointments);
+                        db.Customers.RemoveRange(db.Customers);
+                        db.SaveChanges();
+
+                        db.Branches.AddRange(store.Branches);
+                        db.Services.AddRange(store.Services);
+                        db.BranchServices.AddRange(store.BranchServices);
+                        db.AppointmentSlots.AddRange(store.Slots);
+                        db.SaveChanges();
+                    }
                 });
             });
         }

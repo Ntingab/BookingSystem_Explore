@@ -1,7 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
-using BookingSystem_Explore.Domain.Interfaces.Repositories;
-using BookingSystem_Explore.Domain.Security;
 
 namespace BookingSystem_Explore.Api.Filters;
 

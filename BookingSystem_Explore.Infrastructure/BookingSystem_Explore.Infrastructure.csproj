@@ -5,24 +5,32 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="Interfaces\**" />
+    <Compile Remove="Notifications\**" />
+    <EmbeddedResource Remove="Interfaces\**" />
+    <EmbeddedResource Remove="Notifications\**" />
+    <None Remove="Interfaces\**" />
+    <None Remove="Notifications\**" />
+  </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.0">
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="8.0.0" />
   </ItemGroup>
   <!-- Infrastructure depends on Domain for entities and repository abstractions -->
   <ItemGroup>
     <ProjectReference Include="C:\\Work\\BookingSystem_Explore\\BookingSystem_Explore.Domain\\BookingSystem_Explore.Domain.csproj" />
-    <ProjectReference Include="..\BookingSystem_Explore.Application\BookingSystem_Explore.Application.csproj" />
     <ProjectReference Include="..\BookingSystem_Explore.Domain\BookingSystem_Explore.Domain.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <Folder Include="Entities\" />
-    <Folder Include="Interfaces\Repositories\" />
-    <Folder Include="Notifications\" />
   </ItemGroup>
 
 </Project>
