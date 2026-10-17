@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace BookingSystem_Explore.Infrastructure.Entities
+namespace BookingSystem_Explore.Domain.Entities
 {
     public class Customer
     {

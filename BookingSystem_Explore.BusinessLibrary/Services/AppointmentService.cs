@@ -4,10 +4,10 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using BookingSystem_Explore.BusinessLibrary.DTOs.Requests;
 using BookingSystem_Explore.BusinessLibrary.DTOs.Responses;
-using BookingSystem_Explore.BusinessLibrary.Interfaces.Repositories;
+using BookingSystem_Explore.Domain.Interfaces.Repositories;
 using BookingSystem_Explore.BusinessLibrary.Interfaces.Services;
-using BookingSystem_Explore.Infrastructure.Security;
-using BookingSystem_Explore.Infrastructure.Entities;
+using BookingSystem_Explore.Domain.Security;
+using BookingSystem_Explore.Domain.Entities;
 
 namespace BookingSystem_Explore.BusinessLibrary.Services
 {
@@ -19,7 +19,7 @@ namespace BookingSystem_Explore.BusinessLibrary.Services
         private readonly IServiceRepository _serviceRepository;
         private readonly ICustomerRepository _customerRepository;
         private readonly INotificationRepository _notificationRepository;
-        private readonly BookingSystem_Explore.BusinessLibrary.Interfaces.IUnitOfWork _unitOfWork;
+        private readonly BookingSystem_Explore.Domain.Interfaces.IUnitOfWork _unitOfWork;
         private readonly ITokenService _tokenService;
         private readonly ILogger<AppointmentService> _logger;
 
@@ -30,7 +30,7 @@ namespace BookingSystem_Explore.BusinessLibrary.Services
             IServiceRepository serviceRepository,
             ICustomerRepository customerRepository,
             INotificationRepository notificationRepository,
-            BookingSystem_Explore.BusinessLibrary.Interfaces.IUnitOfWork unitOfWork,
+            BookingSystem_Explore.Domain.Interfaces.IUnitOfWork unitOfWork,
             ITokenService tokenService,
             ILogger<AppointmentService> logger)
         {
@@ -45,7 +45,7 @@ namespace BookingSystem_Explore.BusinessLibrary.Services
             _logger = logger;
         }
 
-        public async Task<AppointmentResponse> BookAppointmentAsync(CreateAppointmentRequest request, CancellationToken cancellationToken)
+        public async Task<AppointmentCreatedResponse> BookAppointmentAsync(CreateAppointmentRequest request, CancellationToken cancellationToken)
         {
             // Basic flow: validate existence and availability
             var slot = await _slotRepository.GetByIdAsync(request.AppointmentSlotId, cancellationToken);
@@ -82,7 +82,7 @@ namespace BookingSystem_Explore.BusinessLibrary.Services
                 AppointmentReference = $"APT-{Guid.NewGuid().ToString().Substring(0,8).ToUpper()}",
                 CustomerId = customer.CustomerId,
                 AppointmentSlotId = slot.AppointmentSlotId,
-                Status = BookingSystem_Explore.Infrastructure.Enums.AppointmentStatus.Confirmed,
+                Status = BookingSystem_Explore.Domain.Enums.AppointmentStatus.Confirmed,
                 CreatedDate = DateTime.UtcNow,
                 Notes = request.Notes
             };
@@ -91,20 +91,20 @@ namespace BookingSystem_Explore.BusinessLibrary.Services
             var token = _tokenService.GenerateToken();
             var tokenHash = _tokenService.HashToken(token);
 
-            // store tokenHash in Appointment - add property? Instead, store as Notification error-free placeholder: For now attach via a custom field not present.
-            // To keep model stable, we will create a Pending notification containing tokenHash in ErrorMessage (non-sensitive storage). In real system, add dedicated column.
+            // store tokenHash in appointment (ManagementTokenHash) so we can verify later
+            appointment.ManagementTokenHash = tokenHash;
 
             var notification = new Notification
             {
                 NotificationId = Guid.NewGuid(),
                 AppointmentId = appointment.AppointmentId,
-                NotificationType = BookingSystem_Explore.Infrastructure.Enums.NotificationType.BookingConfirmation,
-                Channel = BookingSystem_Explore.Infrastructure.Enums.NotificationChannel.Email,
+                NotificationType = BookingSystem_Explore.Domain.Enums.NotificationType.BookingConfirmation,
+                Channel = BookingSystem_Explore.Domain.Enums.NotificationChannel.Email,
                 Recipient = customer.EmailAddress,
-                Message = "Pending confirmation",
-                Status = BookingSystem_Explore.Infrastructure.Enums.NotificationStatus.Pending,
+                Message = "Your appointment has been confirmed",
+                Status = BookingSystem_Explore.Domain.Enums.NotificationStatus.Pending,
                 CreatedDate = DateTime.UtcNow,
-                ErrorMessage = tokenHash
+                ErrorMessage = null
             };
 
             await _appointmentRepository.AddAsync(appointment, cancellationToken);
@@ -114,8 +114,8 @@ namespace BookingSystem_Explore.BusinessLibrary.Services
 
             _logger.LogInformation("Appointment {AppointmentId} created successfully", appointment.AppointmentId);
 
-            // return response with management token
-            return new AppointmentResponse
+            // return creation response with management token (token returned only once)
+            return new AppointmentCreatedResponse
             {
                 AppointmentId = appointment.AppointmentId,
                 AppointmentReference = appointment.AppointmentReference,
@@ -124,24 +124,112 @@ namespace BookingSystem_Explore.BusinessLibrary.Services
                 ServiceName = service.ServiceName,
                 StartDateTimeUtc = slot.StartDateTimeUtc,
                 EndDateTimeUtc = slot.EndDateTimeUtc,
-                NotificationStatus = "Pending"
-                // management token must be returned only on creation - here we don't include it in response object model; you'd include it in a specialized CreatedResponse.
+                NotificationStatus = "Pending",
+                ManagementToken = token
             };
         }
 
-        public Task<AppointmentResponse?> GetAppointmentAsync(Guid appointmentId, string managementToken, CancellationToken cancellationToken)
+        public async Task<AppointmentResponse?> GetAppointmentAsync(Guid appointmentId, string managementToken, CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            var appointment = await _appointmentRepository.GetByIdAsync(appointmentId, cancellationToken);
+            if (appointment == null) return null;
+
+            // verify management token using stored token hash on appointment
+            var tokenHash = appointment.ManagementTokenHash;
+            if (string.IsNullOrEmpty(tokenHash) || !_tokenService.Verify(managementToken, tokenHash))
+            {
+                throw new BookingSystem_Explore.BusinessLibrary.Exceptions.UnauthorizedAppointmentAccessException("Invalid management token");
+            }
+
+            return new AppointmentResponse
+            {
+                AppointmentId = appointment.AppointmentId,
+                AppointmentReference = appointment.AppointmentReference,
+                Status = appointment.Status.ToString(),
+                BranchName = appointment.AppointmentSlot?.BranchService?.Branch?.BranchName ?? string.Empty,
+                ServiceName = appointment.AppointmentSlot?.BranchService?.Service?.ServiceName ?? string.Empty,
+                StartDateTimeUtc = appointment.AppointmentSlot?.StartDateTimeUtc ?? default,
+                EndDateTimeUtc = appointment.AppointmentSlot?.EndDateTimeUtc ?? default,
+                NotificationStatus = appointment.Notifications?.OrderByDescending(n => n.CreatedDate).FirstOrDefault()?.Status.ToString() ?? string.Empty
+            };
         }
 
-        public Task<AppointmentResponse?> GetAppointmentByReferenceAsync(string reference, string managementToken, CancellationToken cancellationToken)
+        public async Task<AppointmentResponse?> GetAppointmentByReferenceAsync(string reference, string managementToken, CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            var appointment = await _appointmentRepository.GetByReferenceAsync(reference, cancellationToken);
+            if (appointment == null) return null;
+            // reuse GetAppointmentAsync logic by verifying token
+            return await GetAppointmentAsync(appointment.AppointmentId, managementToken, cancellationToken);
         }
 
-        public Task<AppointmentResponse> CancelAppointmentAsync(Guid appointmentId, string managementToken, CancellationToken cancellationToken)
+        public async Task<AppointmentResponse> CancelAppointmentAsync(Guid appointmentId, string managementToken, CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            var appointment = await _appointmentRepository.GetByIdAsync(appointmentId, cancellationToken);
+            if (appointment == null) throw new BookingSystem_Explore.BusinessLibrary.Exceptions.NotFoundException("Appointment not found");
+
+            var tokenHash = appointment.ManagementTokenHash;
+            if (string.IsNullOrEmpty(tokenHash) || !_tokenService.Verify(managementToken, tokenHash))
+            {
+                throw new BookingSystem_Explore.BusinessLibrary.Exceptions.UnauthorizedAppointmentAccessException("Invalid management token");
+            }
+
+            if (appointment.Status != BookingSystem_Explore.Infrastructure.Enums.AppointmentStatus.Confirmed)
+            {
+                throw new InvalidOperationException("Only confirmed appointments can be cancelled");
+            }
+
+            var slotStart = appointment.AppointmentSlot?.StartDateTimeUtc ?? DateTime.MinValue;
+            if (slotStart <= DateTime.UtcNow)
+            {
+                throw new InvalidOperationException("Cannot cancel past or started appointments");
+            }
+
+            // perform cancellation
+            appointment.Status = BookingSystem_Explore.Infrastructure.Enums.AppointmentStatus.Cancelled;
+            appointment.CancelledDate = DateTime.UtcNow;
+            appointment.UpdatedDate = DateTime.UtcNow;
+
+            // create pending cancellation notification
+            var notification = new Notification
+            {
+                NotificationId = Guid.NewGuid(),
+                AppointmentId = appointment.AppointmentId,
+                NotificationType = BookingSystem_Explore.Infrastructure.Enums.NotificationType.BookingCancellation,
+                Channel = BookingSystem_Explore.Infrastructure.Enums.NotificationChannel.Email,
+                Recipient = appointment.Customer?.EmailAddress ?? string.Empty,
+                Message = "Pending cancellation",
+                Status = BookingSystem_Explore.Infrastructure.Enums.NotificationStatus.Pending,
+                CreatedDate = DateTime.UtcNow
+            };
+
+            await _notificationRepository.AddAsync(notification, cancellationToken);
+
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+            _logger.LogInformation("Appointment {AppointmentId} cancelled", appointment.AppointmentId);
+
+            // process notification but do not rollback on failure
+            try
+            {
+                var processor = new BookingSystem_Explore.BusinessLibrary.Notifications.SimulatedNotificationProcessor(_notificationRepository, _logger as Microsoft.Extensions.Logging.ILogger<BookingSystem_Explore.BusinessLibrary.Notifications.SimulatedNotificationProcessor> ?? throw new InvalidOperationException("Logger not compatible"));
+                await processor.ProcessNotificationAsync(notification, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to process cancellation notification for {AppointmentId}", appointment.AppointmentId);
+            }
+
+            return new AppointmentResponse
+            {
+                AppointmentId = appointment.AppointmentId,
+                AppointmentReference = appointment.AppointmentReference,
+                Status = appointment.Status.ToString(),
+                BranchName = appointment.AppointmentSlot?.BranchService?.Branch?.BranchName ?? string.Empty,
+                ServiceName = appointment.AppointmentSlot?.BranchService?.Service?.ServiceName ?? string.Empty,
+                StartDateTimeUtc = appointment.AppointmentSlot?.StartDateTimeUtc ?? default,
+                EndDateTimeUtc = appointment.AppointmentSlot?.EndDateTimeUtc ?? default,
+                NotificationStatus = notification.Status.ToString()
+            };
         }
     }
 }

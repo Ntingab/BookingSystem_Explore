@@ -7,10 +7,14 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\BookingSystem_Explore.Infrastructure\BookingSystem_Explore.Infrastructure.csproj" />
+    <!-- Business depends on Domain (entities & abstractions) -->
+    <ProjectReference Include="C:\Work\BookingSystem_Explore\BookingSystem_Explore.Domain\BookingSystem_Explore.Domain.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Interfaces\Repositories\" />
   </ItemGroup>
 
 </Project>

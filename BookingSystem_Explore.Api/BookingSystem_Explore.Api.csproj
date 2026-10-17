@@ -14,8 +14,14 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\BookingSystem_Explore.BusinessLibrary\BookingSystem_Explore.BusinessLibrary.csproj" />
+    <ProjectReference Include="C:\\Work\\BookingSystem_Explore\\BookingSystem_Explore.BusinessLibrary\\BookingSystem_Explore.BusinessLibrary.csproj" />
+    <ProjectReference Include="C:\\Work\\BookingSystem_Explore\\BookingSystem_Explore.Infrastructure\\BookingSystem_Explore.Infrastructure.csproj" />
+    <ProjectReference Include="..\BookingSystem_Explore.Application\BookingSystem_Explore.Application.csproj" />
     <ProjectReference Include="..\BookingSystem_Explore.Infrastructure\BookingSystem_Explore.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Controllers\" />
   </ItemGroup>
 
 </Project>
