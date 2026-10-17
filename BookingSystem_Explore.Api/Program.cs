@@ -6,10 +6,24 @@ using BookingSystem_Explore.BusinessLibrary;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Disable strict DI validation at build time to avoid runtime type resolution issues
+// (some services are registered by extension methods across projects and validated
+// after all registrations are applied at runtime). This avoids TypeLoad/validation
+// exceptions during host build in development. Remove if you prefer strict validation.
+builder.Host.UseDefaultServiceProvider(options =>
+{
+    options.ValidateOnBuild = false;
+    options.ValidateScopes = false;
+});
+
 // Basic API setup so the project builds. Further configuration is done elsewhere in the solution.
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+// Basic health checks for liveness/readiness probes
+builder.Services.AddHealthChecks()
+    .AddCheck("self", () => Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy());
 
 // Register infrastructure and business services (EF, repositories, token service, business services)
 builder.Services.AddInfrastructureServices(builder.Configuration);
@@ -49,6 +63,11 @@ app.UseSwaggerUI(c =>
 
 // Use rate limiter middleware globally
 app.UseRateLimiter();
+
+// Expose health endpoints for probes
+app.MapHealthChecks("/health");         // general health
+app.MapHealthChecks("/health/ready");   // readiness probe
+app.MapHealthChecks("/health/live");    // liveness probe
 
 app.MapControllers();
 

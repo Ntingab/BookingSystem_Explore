@@ -35,8 +35,18 @@ namespace BookingSystem_Explore.Tests
                 logger
             );
 
-            var slot = store.Slots.First();
             var branchService = store.BranchServices.First();
+            var slot = store.Slots.FirstOrDefault(s => s.StartDateTimeUtc > DateTime.UtcNow);
+            if (slot == null)
+            {
+                // create a future slot if the seeded ones are in the past
+                var svcEntity = store.Services.FirstOrDefault(s => s.ServiceId == branchService.ServiceId) ?? store.Services.First();
+                var start = DateTime.UtcNow.AddHours(1);
+                var end = start.AddMinutes(svcEntity.DurationMinutes);
+                var newSlot = new BookingSystem_Explore.Domain.Entities.AppointmentSlot { AppointmentSlotId = Guid.NewGuid(), BranchServiceId = branchService.BranchServiceId, StartDateTimeUtc = start, EndDateTimeUtc = end, CreatedDate = DateTime.UtcNow };
+                store.Slots.Add(newSlot);
+                slot = newSlot;
+            }
 
             var request = new CreateAppointmentRequest
             {
@@ -88,8 +98,17 @@ namespace BookingSystem_Explore.Tests
                 logger
             );
 
-            var slot = store.Slots.First();
             var branchService = store.BranchServices.First();
+            var slot = store.Slots.FirstOrDefault(s => s.StartDateTimeUtc > DateTime.UtcNow);
+            if (slot == null)
+            {
+                var svcEntity = store.Services.FirstOrDefault(s => s.ServiceId == branchService.ServiceId) ?? store.Services.First();
+                var start = DateTime.UtcNow.AddHours(1);
+                var end = start.AddMinutes(svcEntity.DurationMinutes);
+                var newSlot = new BookingSystem_Explore.Domain.Entities.AppointmentSlot { AppointmentSlotId = Guid.NewGuid(), BranchServiceId = branchService.BranchServiceId, StartDateTimeUtc = start, EndDateTimeUtc = end, CreatedDate = DateTime.UtcNow };
+                store.Slots.Add(newSlot);
+                slot = newSlot;
+            }
 
             var request = new CreateAppointmentRequest
             {
@@ -143,8 +162,17 @@ namespace BookingSystem_Explore.Tests
                 logger
             );
 
-            var slot = store.Slots.First();
             var branchService = store.BranchServices.First();
+            var slot = store.Slots.FirstOrDefault(s => s.StartDateTimeUtc > DateTime.UtcNow);
+            if (slot == null)
+            {
+                var svcEntity = store.Services.FirstOrDefault(s => s.ServiceId == branchService.ServiceId) ?? store.Services.First();
+                var start = DateTime.UtcNow.AddHours(1);
+                var end = start.AddMinutes(svcEntity.DurationMinutes);
+                var newSlot = new BookingSystem_Explore.Domain.Entities.AppointmentSlot { AppointmentSlotId = Guid.NewGuid(), BranchServiceId = branchService.BranchServiceId, StartDateTimeUtc = start, EndDateTimeUtc = end, CreatedDate = DateTime.UtcNow };
+                store.Slots.Add(newSlot);
+                slot = newSlot;
+            }
 
             var request = new CreateAppointmentRequest
             {
