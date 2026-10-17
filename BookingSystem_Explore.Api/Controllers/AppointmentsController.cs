@@ -1,0 +1,84 @@
+using BookingSystem_Explore.BusinessLibrary.DTOs.Requests;
+using BookingSystem_Explore.BusinessLibrary.Interfaces.Services;
+using BookingSystem_Explore.BusinessLibrary.DTOs.Responses;
+using Microsoft.AspNetCore.Mvc;
+
+namespace BookingSystem_Explore.Api.Controllers;
+
+[ApiController]
+[Route("api/appointments")]
+public class AppointmentsController : ControllerBase
+{
+    private readonly IAppointmentService _appointmentService;
+
+    public AppointmentsController(IAppointmentService appointmentService)
+    {
+        _appointmentService = appointmentService;
+    }
+
+    [HttpPost]
+    public async Task<ActionResult<AppointmentCreatedResponse>> BookAppointmentAsync([FromBody] CreateAppointmentRequest request, CancellationToken cancellationToken)
+    {
+        var created = await _appointmentService.BookAppointmentAsync(request, cancellationToken);
+        return CreatedAtAction(nameof(GetAppointmentByIdAsync), new { id = created.AppointmentId }, created);
+    }
+
+    [HttpGet("{id:guid}")]
+    public async Task<ActionResult<AppointmentResponse>> GetAppointmentByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        if (!Request.Headers.TryGetValue("X-Management-Token", out var vals) || string.IsNullOrEmpty(vals.FirstOrDefault()))
+        {
+            return Unauthorized();
+        }
+        var token = vals.First();
+        try
+        {
+            var res = await _appointmentService.GetAppointmentAsync(id, token, cancellationToken);
+            if (res == null) return NotFound();
+            return Ok(res);
+        }
+        catch (BookingSystem_Explore.BusinessLibrary.Exceptions.UnauthorizedAppointmentAccessException)
+        {
+            return Unauthorized();
+        }
+    }
+
+    [HttpGet("reference/{reference}")]
+    public async Task<ActionResult<AppointmentResponse>> GetAppointmentByReferenceAsync(string reference, CancellationToken cancellationToken = default)
+    {
+        if (!Request.Headers.TryGetValue("X-Management-Token", out var vals) || string.IsNullOrEmpty(vals.FirstOrDefault()))
+        {
+            return Unauthorized();
+        }
+        var token = vals.First();
+        try
+        {
+            var res = await _appointmentService.GetAppointmentByReferenceAsync(reference, token, cancellationToken);
+            if (res == null) return NotFound();
+            return Ok(res);
+        }
+        catch (BookingSystem_Explore.BusinessLibrary.Exceptions.UnauthorizedAppointmentAccessException)
+        {
+            return Unauthorized();
+        }
+    }
+
+    [HttpPatch("{id:guid}/cancel")]
+    public async Task<ActionResult<AppointmentResponse>> CancelAppointmentAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        if (!Request.Headers.TryGetValue("X-Management-Token", out var vals) || string.IsNullOrEmpty(vals.FirstOrDefault()))
+        {
+            return Unauthorized();
+        }
+        var token = vals.First();
+        try
+        {
+            var res = await _appointmentService.CancelAppointmentAsync(id, token, cancellationToken);
+            return Ok(res);
+        }
+        catch (BookingSystem_Explore.BusinessLibrary.Exceptions.UnauthorizedAppointmentAccessException)
+        {
+            return Unauthorized();
+        }
+    }
+}

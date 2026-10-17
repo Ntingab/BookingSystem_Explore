@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <Folder Include="Entities\" />
+    <Folder Include="Interfaces\Repositories\" />
     <Folder Include="Notifications\" />
   </ItemGroup>
 

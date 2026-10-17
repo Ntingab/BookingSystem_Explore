@@ -13,6 +13,8 @@ namespace BookingSystem_Explore.BusinessLibrary
             services.AddScoped<IBranchService, BranchService>();
             services.AddScoped<IAppointmentSlotService, AppointmentSlotService>();
             services.AddScoped<IAppointmentService, Services.AppointmentService>();
+            services.AddScoped<IServiceService, ServiceService>();
+            services.AddScoped<INotificationService, NotificationService>();
 
             // Notification processor (uses repository abstractions)
             services.AddScoped<SimulatedNotificationProcessor>();

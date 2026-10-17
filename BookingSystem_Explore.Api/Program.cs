@@ -17,9 +17,35 @@ builder.Host.UseDefaultServiceProvider(options =>
 });
 
 // Basic API setup so the project builds. Further configuration is done elsewhere in the solution.
-builder.Services.AddControllers();
+builder.Services.AddControllers(options =>
+{
+    // optionally, global filters can be added here
+});
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+// Configure Swagger to document the management token header
+builder.Services.AddSwaggerGen(options =>
+{
+    options.AddSecurityDefinition("ManagementToken", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+    {
+        Name = "X-Management-Token",
+        Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey,
+        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        Description = "Management token for accessing and managing private appointment resources"
+    });
+
+    options.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+    {
+        {
+            new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+            {
+                Reference = new Microsoft.OpenApi.Models.OpenApiReference { Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme, Id = "ManagementToken" }
+            },
+            Array.Empty<string>()
+        }
+    });
+});
 
 // Basic health checks for liveness/readiness probes
 builder.Services.AddHealthChecks()
@@ -52,6 +78,8 @@ builder.Services.AddRateLimiter(options =>
 });
 
 var app = builder.Build();
+
+app.UseMiddleware<BookingSystem_Explore.Api.Middleware.ExceptionHandlingMiddleware>();
 
 app.UseSwagger();
 app.UseSwaggerUI(c =>

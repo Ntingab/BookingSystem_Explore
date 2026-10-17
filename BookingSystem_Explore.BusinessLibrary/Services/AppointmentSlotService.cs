@@ -23,5 +23,17 @@ namespace BookingSystem_Explore.BusinessLibrary.Services
                 EndDateTimeUtc = s.EndDateTimeUtc
             }).ToList();
         }
+
+        public async Task<AppointmentSlotResponse?> GetSlotByIdAsync(Guid slotId, CancellationToken cancellationToken)
+        {
+            var s = await _slotRepository.GetByIdAsync(slotId, cancellationToken);
+            if (s == null) return null;
+            return new AppointmentSlotResponse
+            {
+                AppointmentSlotId = s.AppointmentSlotId,
+                StartDateTimeUtc = s.StartDateTimeUtc,
+                EndDateTimeUtc = s.EndDateTimeUtc
+            };
+        }
     }
 }
