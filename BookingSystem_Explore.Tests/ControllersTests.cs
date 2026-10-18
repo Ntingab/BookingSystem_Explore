@@ -54,7 +54,7 @@ namespace BookingSystem_Explore.Tests
         {
             var store = new InMemoryDataStore();
             var slotRepo = new InMemoryAppointmentSlotRepository(store);
-            var slotService = new AppointmentSlotService(slotRepo);
+            var slotService = new AppointmentSlotService(slotRepo, new InMemoryUnitOfWork());
 
             var options = new DbContextOptionsBuilder<AppointmentBookingDbContext>()
                 .UseInMemoryDatabase("slots_db").Options;

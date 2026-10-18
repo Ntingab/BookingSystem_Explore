@@ -1,6 +1,7 @@
 using Asp.Versioning;
 using BookingSystem_Explore.BusinessLibrary.DTOs.Responses;
 using BookingSystem_Explore.BusinessLibrary.Interfaces.Services;
+using BookingSystem_Explore.BusinessLibrary.DTOs.Requests;
 using BookingSystem_Explore.Infrastructure.Constants;
 using Microsoft.AspNetCore.Mvc;
 
@@ -36,5 +37,29 @@ public class AppointmentSlotsController : ControllerBase
         var slot = await _slotService.GetSlotByIdAsync(id, cancellationToken);
         if (slot == null) return NotFound();
         return Ok(slot);
+    }
+
+    [HttpPost]
+    [ProducesResponseType(typeof(AppointmentSlotResponse), 201)]
+    [ProducesResponseType(400)]
+    public async Task<ActionResult<AppointmentSlotResponse>> CreateSlotAsync([FromBody] CreateAppointmentSlotRequest request, CancellationToken cancellationToken)
+    {
+        if (request == null) return BadRequest();
+        var created = await _slotService.CreateSlotAsync(request, cancellationToken);
+        // include api version route value so CreatedAtAction can resolve the route
+        var version = HttpContext.Request.RouteValues["version"]?.ToString() ?? "1";
+        return CreatedAtAction(nameof(GetSlotByIdAsync), new { id = created.AppointmentSlotId, version }, created);
+    }
+
+    [HttpPut("{id:guid}")]
+    [ProducesResponseType(typeof(AppointmentSlotResponse), 200)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(404)]
+    public async Task<ActionResult<AppointmentSlotResponse>> UpdateSlotAsync(Guid id, [FromBody] UpdateAppointmentSlotRequest request, CancellationToken cancellationToken)
+    {
+        if (request == null) return BadRequest();
+        var updated = await _slotService.UpdateSlotAsync(id, request, cancellationToken);
+        if (updated == null) return NotFound();
+        return Ok(updated);
     }
 }

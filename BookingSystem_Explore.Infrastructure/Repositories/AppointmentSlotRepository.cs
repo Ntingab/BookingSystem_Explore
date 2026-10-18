@@ -49,5 +49,16 @@ namespace BookingSystem_Explore.Infrastructure.Repositories
 
             return slots;
         }
+
+        public async Task AddAsync(AppointmentSlot slot, CancellationToken cancellationToken)
+        {
+            await _db.AppointmentSlots.AddAsync(slot, cancellationToken);
+        }
+
+        public Task UpdateAsync(AppointmentSlot slot, CancellationToken cancellationToken)
+        {
+            _db.AppointmentSlots.Update(slot);
+            return Task.CompletedTask;
+        }
     }
 }

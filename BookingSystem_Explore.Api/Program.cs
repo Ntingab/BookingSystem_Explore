@@ -58,43 +58,9 @@ namespace BookingSystem_Explore.Api
                 });
             });
 
-            // OpenAPI (Swashbuckle) registration - centralized here to avoid mixing providers
+            // OpenAPI (Swashbuckle) registration - use default configuration
             builder.Services.AddEndpointsApiExplorer();
-            builder.Services.AddSwaggerGen(options =>
-            {
-                options.SwaggerDoc($"v{BookingSystem_Explore.Infrastructure.Constants.Versions.Version1}", new Microsoft.OpenApi.Models.OpenApiInfo
-                {
-                    Title = "BookingSystem Explore API",
-                    Version = $"v{BookingSystem_Explore.Infrastructure.Constants.Versions.Version1}"
-                });
-
-                // Include XML comments if present
-                var xmlFile = System.IO.Path.ChangeExtension(System.Reflection.Assembly.GetExecutingAssembly().Location, ".xml");
-                if (System.IO.File.Exists(xmlFile))
-                {
-                    options.IncludeXmlComments(xmlFile);
-                }
-
-                // Management token header security definition
-                options.AddSecurityDefinition("ManagementToken", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
-                {
-                    Name = "X-Management-Token",
-                    Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey,
-                    In = Microsoft.OpenApi.Models.ParameterLocation.Header,
-                    Description = "Management token for accessing and managing private appointment resources"
-                });
-
-                options.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
-                {
-                    {
-                        new Microsoft.OpenApi.Models.OpenApiSecurityScheme
-                        {
-                            Reference = new Microsoft.OpenApi.Models.OpenApiReference { Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme, Id = "ManagementToken" }
-                        },
-                        Array.Empty<string>()
-                    }
-                });
-            });
+            builder.Services.AddSwaggerGen();
 
             // Basic health checks for liveness/readiness probes
             builder.Services.AddHealthChecks()

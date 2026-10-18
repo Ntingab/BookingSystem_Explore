@@ -6,5 +6,7 @@ namespace BookingSystem_Explore.Domain.Interfaces.Repositories
     {
         Task<AppointmentSlot?> GetByIdAsync(Guid slotId, CancellationToken cancellationToken);
         Task<IReadOnlyList<AppointmentSlot>> GetAvailableSlotsAsync(Guid branchServiceId, DateOnly date, CancellationToken cancellationToken);
+        Task AddAsync(AppointmentSlot slot, CancellationToken cancellationToken);
+        Task UpdateAsync(AppointmentSlot slot, CancellationToken cancellationToken);
     }
 }
