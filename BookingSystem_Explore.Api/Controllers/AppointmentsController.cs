@@ -20,10 +20,11 @@ public class AppointmentsController : ControllerBase
     public async Task<ActionResult<AppointmentCreatedResponse>> BookAppointmentAsync([FromBody] CreateAppointmentRequest request, CancellationToken cancellationToken)
     {
         var created = await _appointmentService.BookAppointmentAsync(request, cancellationToken);
-        return CreatedAtAction(nameof(GetAppointmentByIdAsync), new { id = created.AppointmentId }, created);
+        // Use a named route for the GET by id so URL generation is robust
+        return CreatedAtRoute("GetAppointmentById", new { id = created.AppointmentId }, created);
     }
 
-    [HttpGet("{id:guid}")]
+    [HttpGet("{id:guid}", Name = "GetAppointmentById")]
     public async Task<ActionResult<AppointmentResponse>> GetAppointmentByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         if (!Request.Headers.TryGetValue("X-Management-Token", out var vals) || string.IsNullOrEmpty(vals.FirstOrDefault()))

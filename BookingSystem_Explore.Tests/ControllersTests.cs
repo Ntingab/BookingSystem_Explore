@@ -128,7 +128,7 @@ namespace BookingSystem_Explore.Tests
             };
 
             var createResult = await controller.BookAppointmentAsync(request, CancellationToken.None);
-            var created = Assert.IsType<CreatedAtActionResult>(createResult.Result);
+            var created = Assert.IsType<CreatedAtRouteResult>(createResult.Result);
             var payload = Assert.IsType<AppointmentCreatedResponse>(created.Value);
             Assert.False(string.IsNullOrWhiteSpace(payload.ManagementToken));
 

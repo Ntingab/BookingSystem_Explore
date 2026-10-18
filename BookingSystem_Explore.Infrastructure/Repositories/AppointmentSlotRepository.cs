@@ -35,7 +35,11 @@ namespace BookingSystem_Explore.Infrastructure.Repositories
             var utcStart = TimeZoneInfo.ConvertTimeToUtc(localStart, tz);
             var utcEnd = TimeZoneInfo.ConvertTimeToUtc(localEnd, tz);
 
-            var occupiedStatuses = new[] { BookingSystem_Explore.Domain.Enums.AppointmentStatus.Confirmed, BookingSystem_Explore.Domain.Enums.AppointmentStatus.Cancelled };
+            var occupiedStatuses = new List<BookingSystem_Explore.Domain.Enums.AppointmentStatus>
+            {
+                BookingSystem_Explore.Domain.Enums.AppointmentStatus.Confirmed,
+                BookingSystem_Explore.Domain.Enums.AppointmentStatus.Cancelled
+            };
 
             var slots = await _db.AppointmentSlots
                 .Where(s => s.BranchServiceId == branchServiceId && s.IsActive && s.StartDateTimeUtc >= utcStart && s.StartDateTimeUtc < utcEnd)

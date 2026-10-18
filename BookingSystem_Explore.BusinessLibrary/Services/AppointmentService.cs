@@ -16,6 +16,7 @@ namespace BookingSystem_Explore.BusinessLibrary.Services
         private readonly IServiceRepository _serviceRepository;
         private readonly ICustomerRepository _customerRepository;
         private readonly INotificationRepository _notificationRepository;
+        private readonly BookingSystem_Explore.BusinessLibrary.Notifications.SimulatedNotificationProcessor? _simulatedNotificationProcessor;
         private readonly BookingSystem_Explore.Domain.Interfaces.IUnitOfWork _unitOfWork;
         private readonly ITokenService _tokenService;
         private readonly ILogger<AppointmentService> _logger;
@@ -37,6 +38,7 @@ namespace BookingSystem_Explore.BusinessLibrary.Services
             _serviceRepository = serviceRepository;
             _customerRepository = customerRepository;
             _notificationRepository = notificationRepository;
+            _simulatedNotificationProcessor = null;
             _unitOfWork = unitOfWork;
             _tokenService = tokenService;
             _logger = logger;
@@ -133,7 +135,9 @@ namespace BookingSystem_Explore.BusinessLibrary.Services
 
             // verify management token using stored token hash on appointment
             var tokenHash = appointment.ManagementTokenHash;
-            if (string.IsNullOrEmpty(tokenHash) || !_tokenService.Verify(managementToken, tokenHash))
+            var isValidToken = _tokenService.Verify(managementToken, tokenHash);
+
+            if (!isValidToken)
             {
                 throw new BookingSystem_Explore.BusinessLibrary.Exceptions.UnauthorizedAppointmentAccessException("Invalid management token");
             }
@@ -208,7 +212,12 @@ namespace BookingSystem_Explore.BusinessLibrary.Services
             // process notification but do not rollback on failure
             try
             {
-                var processor = new BookingSystem_Explore.BusinessLibrary.Notifications.SimulatedNotificationProcessor(_notificationRepository, _logger as Microsoft.Extensions.Logging.ILogger<BookingSystem_Explore.BusinessLibrary.Notifications.SimulatedNotificationProcessor> ?? throw new InvalidOperationException("Logger not compatible"));
+                // Prefer a DI-provided processor if available; otherwise create a processor with a compatible logger.
+                var processor = _simulatedNotificationProcessor
+                    ?? new BookingSystem_Explore.BusinessLibrary.Notifications.SimulatedNotificationProcessor(
+                        _notificationRepository,
+                        Microsoft.Extensions.Logging.Abstractions.NullLogger<BookingSystem_Explore.BusinessLibrary.Notifications.SimulatedNotificationProcessor>.Instance);
+
                 await processor.ProcessNotificationAsync(notification, cancellationToken);
             }
             catch (Exception ex)

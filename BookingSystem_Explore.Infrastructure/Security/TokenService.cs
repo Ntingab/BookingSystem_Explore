@@ -7,25 +7,41 @@ namespace BookingSystem_Explore.Infrastructure.Security
     {
         public string GenerateToken()
         {
-            // 32 bytes -> 256 bits, base64 for transport
+            // 32 bytes -> 256 bits, use Base64Url (URL-safe, no padding) for transport so token is safe in headers/urls
             var bytes = RandomNumberGenerator.GetBytes(32);
-            return Convert.ToBase64String(bytes);
+            var b64 = Convert.ToBase64String(bytes);
+            // base64url: replace +/, remove padding
+            var b64Url = b64.Replace('+', '-').Replace('/', '_').TrimEnd('=');
+            return b64Url;
         }
 
         public string HashToken(string token)
         {
-            // Use SHA256 over the UTF8 bytes
-            using var sha = SHA256.Create();
-            var bytes = Encoding.UTF8.GetBytes(token);
-            var hash = sha.ComputeHash(bytes);
-            return Convert.ToBase64String(hash);
+            var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(token));
+            return Convert.ToBase64String(bytes);
         }
 
         public bool Verify(string token, string hash)
         {
-            var computed = HashToken(token);
-            // constant time comparison
-            return CryptographicOperations.FixedTimeEquals(Convert.FromBase64String(computed), Convert.FromBase64String(hash));
+            if (string.IsNullOrWhiteSpace(token) ||
+                string.IsNullOrWhiteSpace(hash))
+            {
+                return false;
+            }
+
+            try
+            {
+                var bytes1 = Convert.FromBase64String(token.Trim());
+                var bytes2 = Convert.FromBase64String(hash.Trim());
+
+                return CryptographicOperations.FixedTimeEquals(
+                    bytes1,
+                    bytes2);
+            }
+            catch (FormatException)
+            {
+                return false;
+            }
         }
     }
 }

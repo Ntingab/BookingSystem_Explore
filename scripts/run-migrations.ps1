@@ -1,5 +1,5 @@
 param(
-	[string]$ConnectionString = "Server=JHB-BASIL\\SQLEXPRESS01;Database=BookingSystem;Trusted_Connection=True;MultipleActiveResultSets=true;",
+	[string]$ConnectionString = "Server=JHB-BASIL\\SQLEXPRESS01;Database=BookingSystem;Trusted_Connection=True;MultipleActiveResultSets=true;Encrypt=True;TrustServerCertificate=True;",
 	[string]$MigrationName = "InitialCreate",
 	[string]$InfrastructureProject = "BookingSystem_Explore.Infrastructure",
 	[string]$StartupProject = "BookingSystem_Explore.Api"
