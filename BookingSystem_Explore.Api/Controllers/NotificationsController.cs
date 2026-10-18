@@ -1,11 +1,13 @@
 using Microsoft.AspNetCore.Mvc;
+using Asp.Versioning;
+using BookingSystem_Explore.BusinessLibrary.Interfaces.Services;
+using BookingSystem_Explore.Infrastructure.Constants;
 
 namespace BookingSystem_Explore.Api.Controllers;
 
-using BookingSystem_Explore.BusinessLibrary.Interfaces.Services;
-
 [ApiController]
-[Route("api/appointments/{appointmentId:guid}/notifications")]
+[Route("api/v{version:apiVersion}/appointments/{appointmentId:guid}/notifications")]
+[ApiVersion(Versions.Version1)]
 public class NotificationsController : ControllerBase
 {
     private readonly INotificationService _notificationService;

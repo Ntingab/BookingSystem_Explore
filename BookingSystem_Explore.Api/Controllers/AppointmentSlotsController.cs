@@ -1,13 +1,14 @@
+using Asp.Versioning;
 using BookingSystem_Explore.BusinessLibrary.DTOs.Responses;
 using BookingSystem_Explore.BusinessLibrary.Interfaces.Services;
-using BookingSystem_Explore.Infrastructure.Persistence;
-using Microsoft.EntityFrameworkCore;
+using BookingSystem_Explore.Infrastructure.Constants;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BookingSystem_Explore.Api.Controllers;
 
 [ApiController]
-[Route("api/appointment-slots")]
+[Route("api/v{version:apiVersion}/appointment-slots")]
+[ApiVersion(Versions.Version1)]
 public class AppointmentSlotsController : ControllerBase
 {
     private readonly IAppointmentSlotService _slotService;

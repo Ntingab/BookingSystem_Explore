@@ -1,11 +1,14 @@
 using BookingSystem_Explore.BusinessLibrary.Interfaces.Services;
 using BookingSystem_Explore.BusinessLibrary.DTOs.Responses;
 using Microsoft.AspNetCore.Mvc;
+using Asp.Versioning;
+using BookingSystem_Explore.Infrastructure.Constants;
 
 namespace BookingSystem_Explore.Api.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/v{version:apiVersion}/[controller]")]
+[ApiVersion(Versions.Version1)]
 public class BranchesController : ControllerBase
 {
     private readonly IBranchService _branchService;
