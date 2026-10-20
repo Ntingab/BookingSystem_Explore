@@ -12,22 +12,85 @@
       6. Appointments
       7. Notifications
 
-    WARNING:
-    This script drops existing tables and their data.
+    IMPROVEMENTS:
+    - Preserves all seven original tables, columns and relationships.
+    - Explicit reset switch prevents accidental deletion of existing data.
+    - Optional demo data (off by default).
+    - Validates positive service duration and valid slot dates.
+    - Adds targeted indexes for booking searches and notification processing.
+
+    IMPORTANT: This is a full-schema creation/reset script, not a migration.
+    Existing data is NEVER dropped unless @AllowDestructiveReset = 1.
 */
+
+USE [master];
+GO
+
+BEGIN TRY
+    IF NOT EXISTS (
+        SELECT 1
+        FROM sys.databases
+        WHERE name = 'BookingSystem'
+    )
+    BEGIN
+        CREATE DATABASE [BookingSystem];
+        PRINT 'SUCCESS: BookingSystem database created successfully.';
+    END
+    ELSE
+    BEGIN
+        PRINT 'INFO: BookingSystem database already exists.';
+    END
+END TRY
+BEGIN CATCH
+    PRINT 'ERROR: ' + ERROR_MESSAGE();
+    THROW;
+END CATCH;
+GO
+
+USE [BookingSystem];
+GO
+
+SELECT
+    DB_NAME() AS DatabaseName,
+    'Database is ready' AS Status;
+GO
+
+
+USE [BookingSystem];
+GO
 
 SET NOCOUNT ON;
 SET XACT_ABORT ON;
 
+-- Set to 1 ONLY if you deliberately want to DROP all seven tables/data.
+DECLARE @AllowDestructiveReset BIT = 0;
+-- Set to 1 for development-only sample records.
+DECLARE @IncludeSampleData BIT = 0;
+
 BEGIN TRY
+    -- Refuse partial or accidental replacement of an existing schema.
+    IF @AllowDestructiveReset = 0 AND
+    (
+        OBJECT_ID(N'dbo.Branches', N'U') IS NOT NULL OR
+        OBJECT_ID(N'dbo.Services', N'U') IS NOT NULL OR
+        OBJECT_ID(N'dbo.BranchServices', N'U') IS NOT NULL OR
+        OBJECT_ID(N'dbo.AppointmentSlots', N'U') IS NOT NULL OR
+        OBJECT_ID(N'dbo.Customers', N'U') IS NOT NULL OR
+        OBJECT_ID(N'dbo.Appointments', N'U') IS NOT NULL OR
+        OBJECT_ID(N'dbo.Notifications', N'U') IS NOT NULL
+    )
+        THROW 51000, 'BookingSystem schema already exists. No changes made. Use a migration for an existing database or explicitly enable destructive reset.', 1;
+
     BEGIN TRANSACTION;
 
     ------------------------------------------------------
-    -- 1. DROP TABLES IN REVERSE DEPENDENCY ORDER
+    -- 1. DROP TABLES IN REVERSE DEPENDENCY ORDER (RESET ONLY)
     ------------------------------------------------------
 
-    IF OBJECT_ID('dbo.Notifications', 'U') IS NOT NULL
-        DROP TABLE dbo.Notifications;
+    IF @AllowDestructiveReset = 1
+    BEGIN
+        IF OBJECT_ID('dbo.Notifications', 'U') IS NOT NULL
+            DROP TABLE dbo.Notifications;
 
     IF OBJECT_ID('dbo.Appointments', 'U') IS NOT NULL
         DROP TABLE dbo.Appointments;
@@ -44,8 +107,9 @@ BEGIN TRY
     IF OBJECT_ID('dbo.Services', 'U') IS NOT NULL
         DROP TABLE dbo.Services;
 
-    IF OBJECT_ID('dbo.Branches', 'U') IS NOT NULL
-        DROP TABLE dbo.Branches;
+        IF OBJECT_ID('dbo.Branches', 'U') IS NOT NULL
+            DROP TABLE dbo.Branches;
+    END;
 
     ------------------------------------------------------
     -- 2. BRANCHES
@@ -84,7 +148,7 @@ BEGIN TRY
 
     ------------------------------------------------------
     -- 3. SERVICES
-    -- Assumed entity: adjust to match Service.cs
+    -- Duration defaults to 30 minutes and must be positive.
     ------------------------------------------------------
 
     CREATE TABLE dbo.Services
@@ -96,7 +160,7 @@ BEGIN TRY
         Description NVARCHAR(1000) NULL,
 
         DurationMinutes INT NOT NULL
-        CONSTRAINT DF_Services_DurationMinutes DEFAULT (30),
+            CONSTRAINT DF_Services_DurationMinutes DEFAULT (30),
 
         IsActive BIT NOT NULL
             CONSTRAINT DF_Services_IsActive DEFAULT 1,
@@ -110,8 +174,8 @@ BEGIN TRY
         CONSTRAINT PK_Services
             PRIMARY KEY (ServiceId),
 
-            CONSTRAINT CK_Services_DurationMinutes
-        CHECK (DurationMinutes > 0)
+        CONSTRAINT CHK_Services_DurationMinutes
+            CHECK (DurationMinutes > 0)
     );
 
     ------------------------------------------------------
@@ -237,7 +301,8 @@ BEGIN TRY
         AppointmentSlotId UNIQUEIDENTIFIER NOT NULL,
         CustomerId UNIQUEIDENTIFIER NOT NULL,
 
-        -- Stored as int to match C# enum
+        -- Stored as int to match C# enum.
+        -- Status-dependent checks must match the application's enum values.
         Status INT NOT NULL
             CONSTRAINT DF_Appointments_Status DEFAULT 0,
 
@@ -271,6 +336,7 @@ BEGIN TRY
 
     ------------------------------------------------------
     -- 8. NOTIFICATIONS
+    -- ON DELETE CASCADE retained from original schema.
     ------------------------------------------------------
 
     CREATE TABLE dbo.Notifications
@@ -308,45 +374,47 @@ BEGIN TRY
 
     ------------------------------------------------------
     -- 9. INDEXES
+    -- Prioritize common query predicates over standalone BIT indexes.
+    -- Existing UNIQUE constraints already index BranchCode,
+    -- EmailAddress, (BranchId, ServiceId),
+    -- (BranchServiceId, StartDateTimeUtc), and AppointmentReference.
     ------------------------------------------------------
-
-    CREATE INDEX IX_Branches_IsActive
-        ON dbo.Branches(IsActive);
-
-    CREATE INDEX IX_BranchServices_BranchId
-        ON dbo.BranchServices(BranchId);
 
     CREATE INDEX IX_BranchServices_ServiceId
-        ON dbo.BranchServices(ServiceId);
+        ON dbo.BranchServices(ServiceId, IsActive)
+        INCLUDE (BranchId, Price);
 
-    CREATE INDEX IX_AppointmentSlots_BranchServiceId
-        ON dbo.AppointmentSlots(BranchServiceId);
+    CREATE INDEX IX_AppointmentSlots_Availability
+        ON dbo.AppointmentSlots(BranchServiceId, IsActive, StartDateTimeUtc)
+        INCLUDE (EndDateTimeUtc);
 
     CREATE INDEX IX_AppointmentSlots_StartDateTimeUtc
-        ON dbo.AppointmentSlots(StartDateTimeUtc);
+        ON dbo.AppointmentSlots(StartDateTimeUtc)
+        INCLUDE (EndDateTimeUtc, BranchServiceId, IsActive);
 
-    CREATE INDEX IX_AppointmentSlots_IsActive
-        ON dbo.AppointmentSlots(IsActive);
+    CREATE INDEX IX_Appointments_CustomerId_CreatedDate
+        ON dbo.Appointments(CustomerId, CreatedDate DESC)
+        INCLUDE (AppointmentReference, AppointmentSlotId, Status);
 
-    CREATE INDEX IX_Appointments_CustomerId
-        ON dbo.Appointments(CustomerId);
+    CREATE INDEX IX_Appointments_AppointmentSlotId_Status
+        ON dbo.Appointments(AppointmentSlotId, Status);
 
-    CREATE INDEX IX_Appointments_AppointmentSlotId
-        ON dbo.Appointments(AppointmentSlotId);
-
-    CREATE INDEX IX_Appointments_Status
-        ON dbo.Appointments(Status);
+    CREATE INDEX IX_Appointments_Status_CreatedDate
+        ON dbo.Appointments(Status, CreatedDate DESC);
 
     CREATE INDEX IX_Notifications_AppointmentId
-        ON dbo.Notifications(AppointmentId);
+        ON dbo.Notifications(AppointmentId, CreatedDate DESC);
 
-    CREATE INDEX IX_Notifications_Status
-        ON dbo.Notifications(Status);
+    CREATE INDEX IX_Notifications_Status_CreatedDate
+        ON dbo.Notifications(Status, CreatedDate)
+        INCLUDE (NotificationType, Channel);
 
     ------------------------------------------------------
-    -- 10. SAMPLE SEED DATA
+    -- 10. OPTIONAL SAMPLE SEED DATA (development only)
     ------------------------------------------------------
 
+    IF @IncludeSampleData = 1
+    BEGIN
     DECLARE @BranchId UNIQUEIDENTIFIER = NEWID();
     DECLARE @ServiceId UNIQUEIDENTIFIER = NEWID();
     DECLARE @BranchServiceId UNIQUEIDENTIFIER = NEWID();
@@ -483,9 +551,11 @@ BEGIN TRY
         0
     );
 
+    END; -- End optional sample data.
+
     COMMIT TRANSACTION;
 
-    PRINT 'SUCCESS: BookingSystem_Explore schema created.';
+    PRINT 'SUCCESS: BookingSystem schema created with constraints and indexes.';
 
 END TRY
 BEGIN CATCH
@@ -502,7 +572,7 @@ BEGIN CATCH
 END CATCH;
 
 ------------------------------------------------------
--- 11. VERIFY TABLE RECORD COUNTS
+-- 11. VERIFY TABLE RECORD COUNTS (read-only)
 ------------------------------------------------------
 
 SELECT 'Branches' AS Entity, COUNT(*) AS RecordCount
@@ -521,7 +591,7 @@ UNION ALL
 SELECT 'Notifications', COUNT(*) FROM dbo.Notifications;
 
 ------------------------------------------------------
--- 12. VERIFY APPOINTMENT RELATIONSHIPS
+-- 12. VERIFY APPOINTMENT RELATIONSHIPS (read-only)
 ------------------------------------------------------
 
 SELECT
@@ -546,3 +616,17 @@ INNER JOIN dbo.Branches b
     ON bs.BranchId = b.BranchId
 INNER JOIN dbo.Services s
     ON bs.ServiceId = s.ServiceId;
+
+/*
+ADDITIONAL APPLICATION-LEVEL RULES (not encoded without enum definitions):
+1. Use a transaction with appropriate locking when reserving an appointment slot.
+   Ensure only one ACTIVE booking per slot; canceled bookings may be historical.
+2. Reject overlapping time windows for the same branch/service as appropriate.
+   A UNIQUE start-time constraint alone does not prevent overlaps.
+3. Keep slot times in UTC; convert using Branches.TimeZoneId at API/UI edges.
+4. Do not store plaintext management tokens. Store only secure token hashes.
+5. Add a filtered unique index for active appointments only after confirming
+   the application's exact Status enum values (Pending/Confirmed/Cancelled).
+6. For an existing populated database, deploy an ALTER-based migration instead
+   of rerunning this full-create script.
+*/
