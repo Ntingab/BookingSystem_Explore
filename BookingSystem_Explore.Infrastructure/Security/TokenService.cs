@@ -28,15 +28,14 @@ namespace BookingSystem_Explore.Infrastructure.Security
             {
                 return false;
             }
-
+            // Recompute SHA256 hash of the provided token and compare to the stored hash (constant time)
             try
             {
-                var bytes1 = Convert.FromBase64String(token.Trim());
-                var bytes2 = Convert.FromBase64String(hash.Trim());
+                var tokenBytes = Encoding.UTF8.GetBytes(token);
+                var computed = SHA256.HashData(tokenBytes);
+                var expected = Convert.FromBase64String(hash.Trim());
 
-                return CryptographicOperations.FixedTimeEquals(
-                    bytes1,
-                    bytes2);
+                return CryptographicOperations.FixedTimeEquals(computed, expected);
             }
             catch (FormatException)
             {

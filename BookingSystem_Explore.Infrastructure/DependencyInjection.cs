@@ -9,10 +9,25 @@ namespace BookingSystem_Explore.Infrastructure
 {
     public static class DependencyInjection
     {
-        public static IServiceCollection AddInfrastructureServices(this IServiceCollection services, IConfiguration configuration)
+        public static IServiceCollection AddInfrastructureServices(this IServiceCollection services, IConfiguration configuration, bool skipDbRegistration = false)
         {
             var conn = configuration.GetConnectionString("DefaultConnection");
-            services.AddDbContext<AppointmentBookingDbContext>(options => options.UseSqlServer(conn));
+            var cfgUseInMemory = configuration["UseInMemoryDb"];
+            var useInMemoryDb = string.Equals(cfgUseInMemory, "true", System.StringComparison.OrdinalIgnoreCase);
+            if (!useInMemoryDb && string.IsNullOrWhiteSpace(cfgUseInMemory))
+            {
+                var useInMemoryEnv = System.Environment.GetEnvironmentVariable("USE_INMEMORY_DB");
+                useInMemoryDb = string.Equals(useInMemoryEnv, "true", System.StringComparison.OrdinalIgnoreCase);
+            }
+            // If the test host or another registration already configured DbContextOptions for
+            // AppointmentBookingDbContext (e.g. integration tests replacing it with InMemory),
+            // avoid registering the SQL Server provider again to prevent multiple provider errors.
+            if (!skipDbRegistration &&
+                !useInMemoryDb &&
+                !services.Any(sd => sd.ServiceType == typeof(Microsoft.EntityFrameworkCore.DbContextOptions<AppointmentBookingDbContext>)))
+            {
+                services.AddDbContext<AppointmentBookingDbContext>(options => options.UseSqlServer(conn));
+            }
 
             // Register EF repositories (implement Domain interfaces)
             services.AddScoped<BookingSystem_Explore.Domain.Interfaces.Repositories.IBranchRepository, BranchRepository>();

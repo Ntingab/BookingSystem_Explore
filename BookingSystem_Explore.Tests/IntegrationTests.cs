@@ -17,6 +17,20 @@ namespace BookingSystem_Explore.Tests
         {
             _factory = factory.WithWebHostBuilder(builder =>
             {
+                // Run the app under a distinct environment so Program.Main can detect it
+                // and skip SQL registration early in startup. Configure host configuration
+                // so the environment is set before the app builds.
+                // Set the hosting environment via IWebHostBuilder settings so Program detects it early
+                builder.UseSetting("environment", "IntegrationTests");
+                // Tell the application to use the in-memory database provider when building the host
+                builder.ConfigureAppConfiguration((ctx, cfg) =>
+                {
+                    // Use MemoryConfigurationSource to avoid requiring the AddInMemoryCollection extension
+                    var data = new Dictionary<string, string?> { ["UseInMemoryDb"] = "true" }
+                        .Where(kv => kv.Value != null)
+                        .ToDictionary(kv => kv.Key, kv => kv.Value!);
+                    cfg.Add(new Microsoft.Extensions.Configuration.Memory.MemoryConfigurationSource { InitialData = data });
+                });
                 builder.ConfigureServices(services =>
                 {
                     // replace real DbContext with in-memory for tests
@@ -60,14 +74,14 @@ namespace BookingSystem_Explore.Tests
             var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
             // 1 - get branches
-            var branchesResp = await client.GetAsync("/api/branches");
+            var branchesResp = await client.GetAsync("/api/v1/branches");
             branchesResp.EnsureSuccessStatusCode();
             var branches = await branchesResp.Content.ReadFromJsonAsync<IReadOnlyList<BookingSystem_Explore.BusinessLibrary.DTOs.Responses.BranchResponse>>();
             Assert.NotNull(branches);
             var branchId = branches!.First().BranchId;
 
             // 2 - get branch services
-            var svcResp = await client.GetAsync($"/api/branches/{branchId}/services");
+            var svcResp = await client.GetAsync($"/api/v1/branches/{branchId}/services");
             svcResp.EnsureSuccessStatusCode();
             var svcs = await svcResp.Content.ReadFromJsonAsync<IReadOnlyList<ServiceResponse>>();
             Assert.NotNull(svcs);
@@ -75,7 +89,7 @@ namespace BookingSystem_Explore.Tests
 
             // 3 - get available slots for today
             var date = DateTime.UtcNow.Date.ToString("yyyy-MM-dd");
-            var slotsResp = await client.GetAsync($"/api/appointment-slots?branchServiceId={branchServiceId}&date={date}");
+            var slotsResp = await client.GetAsync($"/api/v1/appointment-slots?branchServiceId={branchServiceId}&date={date}");
             slotsResp.EnsureSuccessStatusCode();
             var slots = await slotsResp.Content.ReadFromJsonAsync<IReadOnlyList<BookingSystem_Explore.BusinessLibrary.DTOs.Responses.AppointmentSlotResponse>>();
             Assert.NotNull(slots);
@@ -90,7 +104,7 @@ namespace BookingSystem_Explore.Tests
                 Notes = "integration test"
             };
 
-            var createResp = await client.PostAsJsonAsync("/api/appointments", request);
+            var createResp = await client.PostAsJsonAsync("/api/v1/appointments", request);
             createResp.EnsureSuccessStatusCode();
             var created = await createResp.Content.ReadFromJsonAsync<AppointmentCreatedResponse>();
             Assert.NotNull(created);
@@ -98,11 +112,11 @@ namespace BookingSystem_Explore.Tests
 
             // 5 - get appointment with header token
             client.DefaultRequestHeaders.Add("X-Management-Token", created.ManagementToken);
-            var getResp = await client.GetAsync($"/api/appointments/{created.AppointmentId}");
+            var getResp = await client.GetAsync($"/api/v1/appointments/{created.AppointmentId}");
             getResp.EnsureSuccessStatusCode();
 
             // 6 - cancel
-            var cancelResp = await client.PatchAsync($"/api/appointments/{created.AppointmentId}/cancel", null);
+            var cancelResp = await client.PatchAsync($"/api/v1/appointments/{created.AppointmentId}/cancel", null);
             cancelResp.EnsureSuccessStatusCode();
         }
     }

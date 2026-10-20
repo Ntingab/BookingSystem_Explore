@@ -68,7 +68,11 @@ namespace BookingSystem_Explore.Api
                 .AddCheck<BookingSystem_Explore.Api.HealthChecks.DbHealthCheck>("database");
 
             // Register infrastructure and business services (EF, repositories, token service, business services)
-            builder.Services.AddInfrastructureServices(builder.Configuration);
+            // Allow skipping DB registration when running integration tests. The test host sets the
+            // environment to 'IntegrationTests' which instructs the infrastructure to avoid adding
+            // the SQL Server provider so tests can supply an in-memory provider.
+            var skipDb = builder.Environment.IsEnvironment("IntegrationTests");
+            builder.Services.AddInfrastructureServices(builder.Configuration, skipDb);
             builder.Services.AddBusinessLibraryServices();
 
             // If running outside development, allow client certificates on Kestrel

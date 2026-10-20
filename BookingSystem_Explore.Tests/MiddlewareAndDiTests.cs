@@ -19,7 +19,8 @@ namespace BookingSystem_Explore.Tests
         public async Task ExceptionHandlingMiddleware_HandlesExceptions_ReturnsProblemJson()
         {
             var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
-            var resp = await client.GetAsync("/test/throw");
+            // Test endpoint is versioned under the API route template
+            var resp = await client.GetAsync("/api/v1/test/throw");
             Assert.Equal(HttpStatusCode.InternalServerError, resp.StatusCode);
             Assert.Equal("application/problem+json", resp.Content.Headers.ContentType?.MediaType);
         }
