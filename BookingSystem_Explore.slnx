@@ -4,4 +4,5 @@
   <Project Path="BookingSystem_Explore.Domain/BookingSystem_Explore.Domain.csproj" />
   <Project Path="BookingSystem_Explore.Infrastructure/BookingSystem_Explore.Infrastructure.csproj" />
   <Project Path="BookingSystem_Explore.Tests/BookingSystem_Explore.Tests.csproj" />
+  <Project Path="BookingSystem_Explore.Ui/BookingSystem_Explore.Ui.csproj" />
 </Solution>

@@ -1,0 +1,21 @@
+﻿@inherits LayoutComponentBase
+<div class="page">
+    <div class="sidebar">
+        <NavMenu />
+    </div>
+
+    <main>
+        <div class="top-row px-4">
+            <div class="d-flex align-items-center gap-2 text-primary-emphasis fw-semibold">
+                <i class="bi bi-calendar2-check fs-5"></i>
+                <span>Appointment Booking Portal</span>
+            </div>
+
+            <a class="btn btn-sm btn-outline-primary" href="https://demos.blazorbootstrap.com/" target="_blank" rel="noopener noreferrer">UI reference</a>
+        </div>
+
+        <article class="content px-4">
+            @Body
+        </article>
+    </main>
+</div>

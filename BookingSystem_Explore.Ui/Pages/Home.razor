@@ -1,0 +1,288 @@
+﻿@page "/"
+@inject BookingSystem_Explore.Ui.Services.BookingApiClient ApiClient
+
+<PageTitle>Book Appointment</PageTitle>
+
+<section class="hero shadow-sm mb-4">
+	<div>
+		<h1 class="mb-2">Book your branch appointment</h1>
+		<p class="mb-0">Fast 3-step flow inspired by BlazorBootstrap demos: choose location, choose slot, submit details.</p>
+	</div>
+	<span class="badge rounded-pill text-bg-light px-3 py-2">Live API</span>
+</section>
+
+<div class="booking-steps mb-4">
+	<div class="step-item @(string.IsNullOrWhiteSpace(_selectedBranchServiceId) ? "active" : "done")">
+		<span>1</span>
+		<small>Location & Service</small>
+	</div>
+	<div class="step-item @(!string.IsNullOrWhiteSpace(_selectedBranchServiceId) && string.IsNullOrWhiteSpace(_selectedSlotId) ? "active" : (!string.IsNullOrWhiteSpace(_selectedSlotId) ? "done" : string.Empty))">
+		<span>2</span>
+		<small>Appointment Slot</small>
+	</div>
+	<div class="step-item @(_createdAppointment is null ? string.Empty : "done")">
+		<span>3</span>
+		<small>Confirmation</small>
+	</div>
+</div>
+
+<div class="row g-4">
+	<div class="col-lg-8">
+		<div class="card booking-card border-0 shadow-sm">
+			<div class="card-body p-4">
+				<h5 class="card-title mb-3">Create appointment</h5>
+
+				@if (!string.IsNullOrWhiteSpace(_error))
+				{
+					<div class="alert alert-danger">@_error</div>
+				}
+
+				@if (!string.IsNullOrWhiteSpace(_success))
+				{
+					<div class="alert alert-success">@_success</div>
+				}
+
+				<EditForm Model="_model" OnValidSubmit="SubmitAsync">
+					<DataAnnotationsValidator />
+
+					<div class="mb-3">
+						<label class="form-label">Branch</label>
+						<InputSelect class="form-select form-select-lg" @bind-Value="_selectedBranchId" @onchange="OnBranchChangedAsync">
+							<option value="">Select branch</option>
+							@foreach (var branch in _branches)
+							{
+								<option value="@branch.BranchId">@branch.BranchName (@branch.City)</option>
+							}
+						</InputSelect>
+					</div>
+
+					<div class="mb-3">
+						<label class="form-label">Service</label>
+						<InputSelect class="form-select form-select-lg" @bind-Value="_selectedBranchServiceId">
+							<option value="">Select service</option>
+							@foreach (var service in _services)
+							{
+								<option value="@service.ServiceId">@service.ServiceName (@service.DurationMinutes mins)</option>
+							}
+						</InputSelect>
+						<small class="text-muted">If your API uses a separate BranchServiceId, replace this value with that ID.</small>
+					</div>
+
+					<div class="row g-3 align-items-end mb-3">
+						<div class="col-md-6">
+						<label class="form-label">Date</label>
+						<InputDate class="form-control form-control-lg" @bind-Value="_appointmentDate" />
+						</div>
+						<div class="col-md-6">
+							<button type="button" class="btn btn-outline-primary w-100 btn-lg" @onclick="LoadSlotsAsync">
+								<i class="bi bi-search me-2"></i>Load available slots
+							</button>
+						</div>
+					</div>
+
+					<div class="mb-3">
+						<label class="form-label">Time slot</label>
+						<InputSelect class="form-select form-select-lg" @bind-Value="_selectedSlotId">
+							<option value="">Select slot</option>
+							@foreach (var slot in _slots)
+							{
+								<option value="@slot.AppointmentSlotId">@slot.StartDateTimeUtc.ToLocalTime():g - @slot.EndDateTimeUtc.ToLocalTime():t</option>
+							}
+						</InputSelect>
+					</div>
+
+					<div class="row">
+						<div class="col-md-6 mb-3">
+							<label class="form-label">First name</label>
+							<InputText class="form-control" @bind-Value="_model.FirstName" placeholder="Jane" />
+						</div>
+						<div class="col-md-6 mb-3">
+							<label class="form-label">Last name</label>
+							<InputText class="form-control" @bind-Value="_model.LastName" placeholder="Doe" />
+						</div>
+					</div>
+
+					<div class="row">
+						<div class="col-md-6 mb-3">
+							<label class="form-label">Email</label>
+							<InputText class="form-control" @bind-Value="_model.EmailAddress" placeholder="jane@example.com" />
+						</div>
+						<div class="col-md-6 mb-3">
+							<label class="form-label">Phone</label>
+							<InputText class="form-control" @bind-Value="_model.PhoneNumber" placeholder="+27 82 000 0000" />
+						</div>
+					</div>
+
+					<div class="mb-3">
+						<label class="form-label">Notes</label>
+						<InputTextArea class="form-control" @bind-Value="_model.Notes" />
+					</div>
+
+					<button type="submit" class="btn btn-primary btn-lg px-4" disabled="@_isBusy">
+						@if (_isBusy)
+						{
+							<span class="spinner-border spinner-border-sm me-2"></span>
+						}
+						Book appointment
+					</button>
+				</EditForm>
+			</div>
+		</div>
+	</div>
+
+	<div class="col-lg-4">
+		<div class="card confirmation-card border-0 shadow-sm">
+			<div class="card-body p-4">
+				<h5 class="card-title">Confirmation</h5>
+
+				@if (_createdAppointment is null)
+				{
+					<p class="text-muted mb-0">Submit a booking to view the simulated confirmation details.</p>
+				}
+				else
+				{
+					<dl class="row mb-0">
+						<dt class="col-5">Reference</dt>
+						<dd class="col-7">@_createdAppointment.AppointmentReference</dd>
+						<dt class="col-5">Status</dt>
+						<dd class="col-7">@_createdAppointment.Status</dd>
+						<dt class="col-5">Branch</dt>
+						<dd class="col-7">@_createdAppointment.BranchName</dd>
+						<dt class="col-5">Service</dt>
+						<dd class="col-7">@_createdAppointment.ServiceName</dd>
+						<dt class="col-5">Start</dt>
+						<dd class="col-7">@_createdAppointment.StartDateTimeUtc.ToLocalTime():f</dd>
+						<dt class="col-5">End</dt>
+						<dd class="col-7">@_createdAppointment.EndDateTimeUtc.ToLocalTime():t</dd>
+						<dt class="col-5">Notification</dt>
+						<dd class="col-7">@_createdAppointment.NotificationStatus</dd>
+					</dl>
+
+					<div class="alert alert-warning mt-3 mb-0 small">
+						Save this management token: <code>@_createdAppointment.ManagementToken</code>
+					</div>
+				}
+			</div>
+		</div>
+	</div>
+</div>
+
+@code {
+	private readonly BookingFormModel _model = new();
+	private List<BranchResponse> _branches = [];
+	private List<ServiceResponse> _services = [];
+	private List<AppointmentSlotResponse> _slots = [];
+
+	private string _selectedBranchId = string.Empty;
+	private string _selectedBranchServiceId = string.Empty;
+	private string _selectedSlotId = string.Empty;
+	private DateTime _appointmentDate = DateTime.Today;
+	private bool _isBusy;
+	private string? _error;
+	private string? _success;
+	private AppointmentCreatedResponse? _createdAppointment;
+
+	protected override async Task OnInitializedAsync()
+	{
+		_branches = await ApiClient.GetBranchesAsync();
+	}
+
+	private async Task OnBranchChangedAsync(ChangeEventArgs _)
+	{
+		_services = [];
+		_slots = [];
+		_selectedSlotId = string.Empty;
+
+		if (Guid.TryParse(_selectedBranchId, out var branchId))
+		{
+			_services = await ApiClient.GetBranchServicesAsync(branchId);
+			_selectedBranchServiceId = string.Empty;
+		}
+	}
+
+	private async Task LoadSlotsAsync()
+	{
+		_error = null;
+		_success = null;
+		_slots = [];
+		_selectedSlotId = string.Empty;
+
+		if (!Guid.TryParse(_selectedBranchServiceId, out var branchServiceId))
+		{
+			_error = "Select a service first.";
+			return;
+		}
+
+		_slots = await ApiClient.GetAvailableSlotsAsync(branchServiceId, DateOnly.FromDateTime(_appointmentDate));
+
+		if (_slots.Count == 0)
+		{
+			_error = "No slots available for the selected date.";
+		}
+	}
+
+	private async Task SubmitAsync()
+	{
+		_error = null;
+		_success = null;
+
+		if (!Guid.TryParse(_selectedBranchServiceId, out var branchServiceId))
+		{
+			_error = "Select a service.";
+			return;
+		}
+
+		if (!Guid.TryParse(_selectedSlotId, out var slotId))
+		{
+			_error = "Select an appointment slot.";
+			return;
+		}
+
+		_isBusy = true;
+		try
+		{
+			var request = new CreateAppointmentRequest
+			{
+				BranchServiceId = branchServiceId,
+				AppointmentSlotId = slotId,
+				Customer = new CreateAppointmentRequest.CustomerDto
+				{
+					FirstName = _model.FirstName,
+					LastName = _model.LastName,
+					EmailAddress = _model.EmailAddress,
+					PhoneNumber = _model.PhoneNumber
+				},
+				Notes = _model.Notes
+			};
+
+			_createdAppointment = await ApiClient.BookAppointmentAsync(request);
+			_success = "Appointment booked successfully.";
+		}
+		catch (Exception ex)
+		{
+			_error = $"Booking failed: {ex.Message}";
+		}
+		finally
+		{
+			_isBusy = false;
+		}
+	}
+
+	private sealed class BookingFormModel
+	{
+		[System.ComponentModel.DataAnnotations.Required]
+		public string FirstName { get; set; } = string.Empty;
+
+		[System.ComponentModel.DataAnnotations.Required]
+		public string LastName { get; set; } = string.Empty;
+
+		[System.ComponentModel.DataAnnotations.Required]
+		[System.ComponentModel.DataAnnotations.EmailAddress]
+		public string EmailAddress { get; set; } = string.Empty;
+
+		[System.ComponentModel.DataAnnotations.Required]
+		public string PhoneNumber { get; set; } = string.Empty;
+
+		public string? Notes { get; set; }
+	}
+}
