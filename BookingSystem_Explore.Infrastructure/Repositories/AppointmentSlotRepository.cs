@@ -35,11 +35,7 @@ namespace BookingSystem_Explore.Infrastructure.Repositories
             var utcStart = TimeZoneInfo.ConvertTimeToUtc(localStart, tz);
             var utcEnd = TimeZoneInfo.ConvertTimeToUtc(localEnd, tz);
 
-            var occupiedStatuses = new List<BookingSystem_Explore.Domain.Enums.AppointmentStatus>
-            {
-                BookingSystem_Explore.Domain.Enums.AppointmentStatus.Confirmed,
-                BookingSystem_Explore.Domain.Enums.AppointmentStatus.Cancelled
-            };
+            var occupiedStatuses = GetOccupiedStatuses();
 
             var slots = await _db.AppointmentSlots
                 .Where(s => s.BranchServiceId == branchServiceId && s.IsActive && s.StartDateTimeUtc >= utcStart && s.StartDateTimeUtc < utcEnd)
@@ -48,6 +44,17 @@ namespace BookingSystem_Explore.Infrastructure.Repositories
                 .ToListAsync(cancellationToken);
 
             return slots;
+        }
+
+        public async Task<IReadOnlyList<AppointmentSlot>> GetAllAvailableSlotsAsync(CancellationToken cancellationToken)
+        {
+            var occupiedStatuses = GetOccupiedStatuses();
+
+            return await _db.AppointmentSlots
+                .Where(s => s.IsActive)
+                .Where(s => !_db.Appointments.Any(a => a.AppointmentSlotId == s.AppointmentSlotId && occupiedStatuses.Contains(a.Status)))
+                .AsNoTracking()
+                .ToListAsync(cancellationToken);
         }
 
         public async Task AddAsync(AppointmentSlot slot, CancellationToken cancellationToken)
@@ -59,6 +66,16 @@ namespace BookingSystem_Explore.Infrastructure.Repositories
         {
             _db.AppointmentSlots.Update(slot);
             return Task.CompletedTask;
+        }
+
+        private static List<BookingSystem_Explore.Domain.Enums.AppointmentStatus> GetOccupiedStatuses()
+        {
+            return new List<BookingSystem_Explore.Domain.Enums.AppointmentStatus>
+            {
+                BookingSystem_Explore.Domain.Enums.AppointmentStatus.Confirmed,
+                BookingSystem_Explore.Domain.Enums.AppointmentStatus.Completed,
+                BookingSystem_Explore.Domain.Enums.AppointmentStatus.NoShow
+            };
         }
     }
 }

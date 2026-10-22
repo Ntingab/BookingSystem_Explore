@@ -2,6 +2,7 @@ using BookingSystem_Explore.BusinessLibrary.DTOs.Requests;
 using BookingSystem_Explore.BusinessLibrary.Repositories;
 using BookingSystem_Explore.BusinessLibrary.Services;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Xunit;
 
 namespace BookingSystem_Explore.Tests
@@ -21,6 +22,8 @@ namespace BookingSystem_Explore.Tests
             var notificationRepo = new InMemoryNotificationRepository(store);
             var uow = new InMemoryUnitOfWork();
             var tokenService = new BookingSystem_Explore.Infrastructure.Security.TokenService();
+            var phoneEncryptionService = new BookingSystem_Explore.Infrastructure.Security.PhoneEncryptionService(
+                Options.Create(new BookingSystem_Explore.Infrastructure.Security.PhoneEncryptionOptions { Key = "unit-test-phone-key" }));
             var logger = new NullLogger<AppointmentService>();
 
             var svc = new AppointmentService(
@@ -32,6 +35,7 @@ namespace BookingSystem_Explore.Tests
                 notificationRepo,
                 uow,
                 tokenService,
+                phoneEncryptionService,
                 logger
             );
 
@@ -57,7 +61,7 @@ namespace BookingSystem_Explore.Tests
                     FirstName = "Test",
                     LastName = "User",
                     EmailAddress = "test@example.com",
-                    PhoneNumber = "1234567890"
+                    PhoneNumber = phoneEncryptionService.Encrypt("1234567890")
                 },
                 Notes = "Unit test booking"
             };
@@ -84,6 +88,8 @@ namespace BookingSystem_Explore.Tests
             var notificationRepo = new InMemoryNotificationRepository(store);
             var uow = new InMemoryUnitOfWork();
             var tokenService = new BookingSystem_Explore.Infrastructure.Security.TokenService();
+            var phoneEncryptionService = new BookingSystem_Explore.Infrastructure.Security.PhoneEncryptionService(
+                Options.Create(new BookingSystem_Explore.Infrastructure.Security.PhoneEncryptionOptions { Key = "unit-test-phone-key" }));
             var logger = new NullLogger<AppointmentService>();
 
             var svc = new AppointmentService(
@@ -95,6 +101,7 @@ namespace BookingSystem_Explore.Tests
                 notificationRepo,
                 uow,
                 tokenService,
+                phoneEncryptionService,
                 logger
             );
 
@@ -119,7 +126,7 @@ namespace BookingSystem_Explore.Tests
                     FirstName = "Test",
                     LastName = "User",
                     EmailAddress = "test@example.com",
-                    PhoneNumber = "1234567890"
+                    PhoneNumber = phoneEncryptionService.Encrypt("1234567890")
                 },
                 Notes = "Unit test booking"
             };
@@ -148,6 +155,8 @@ namespace BookingSystem_Explore.Tests
             var notificationRepo = new InMemoryNotificationRepository(store);
             var uow = new InMemoryUnitOfWork();
             var tokenService = new BookingSystem_Explore.Infrastructure.Security.TokenService();
+            var phoneEncryptionService = new BookingSystem_Explore.Infrastructure.Security.PhoneEncryptionService(
+                Options.Create(new BookingSystem_Explore.Infrastructure.Security.PhoneEncryptionOptions { Key = "unit-test-phone-key" }));
             var logger = new NullLogger<AppointmentService>();
 
             var svc = new AppointmentService(
@@ -159,6 +168,7 @@ namespace BookingSystem_Explore.Tests
                 notificationRepo,
                 uow,
                 tokenService,
+                phoneEncryptionService,
                 logger
             );
 
@@ -183,7 +193,7 @@ namespace BookingSystem_Explore.Tests
                     FirstName = "Test",
                     LastName = "User",
                     EmailAddress = "test@example.com",
-                    PhoneNumber = "1234567890"
+                    PhoneNumber = phoneEncryptionService.Encrypt("1234567890")
                 },
                 Notes = "Unit test booking"
             };

@@ -7,6 +7,7 @@ using BookingSystem_Explore.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Xunit;
 
 namespace BookingSystem_Explore.Tests
@@ -18,7 +19,7 @@ namespace BookingSystem_Explore.Tests
         {
             var store = new InMemoryDataStore();
             var branchRepo = new InMemoryBranchRepository(store);
-            var branchService = new BranchService(branchRepo);
+            var branchService = new BranchService(branchRepo, new InMemoryUnitOfWork());
             var ctrl = new BranchesController(branchService);
 
             var result = await ctrl.GetBranchesAsync(CancellationToken.None);
@@ -32,7 +33,7 @@ namespace BookingSystem_Explore.Tests
         {
             var store = new InMemoryDataStore();
             var serviceRepo = new InMemoryServiceRepository(store);
-            var serviceService = new BookingSystem_Explore.BusinessLibrary.Services.ServiceService(serviceRepo);
+            var serviceService = new BookingSystem_Explore.BusinessLibrary.Services.ServiceService(serviceRepo, new InMemoryUnitOfWork());
 
             var ctrl = new ServicesController(serviceService);
 
@@ -97,10 +98,12 @@ namespace BookingSystem_Explore.Tests
             var notificationRepo = new InMemoryNotificationRepository(store);
             var uow = new InMemoryUnitOfWork();
             var tokenService = new BookingSystem_Explore.Infrastructure.Security.TokenService();
+            var phoneEncryptionService = new BookingSystem_Explore.Infrastructure.Security.PhoneEncryptionService(
+                Options.Create(new BookingSystem_Explore.Infrastructure.Security.PhoneEncryptionOptions { Key = "unit-test-phone-key" }));
             var logger = new NullLogger<BookingSystem_Explore.BusinessLibrary.Services.AppointmentService>();
 
             var svc = new BookingSystem_Explore.BusinessLibrary.Services.AppointmentService(
-                appointmentRepo, slotRepo, branchRepo, serviceRepo, customerRepo, notificationRepo, uow, tokenService, logger
+                appointmentRepo, slotRepo, branchRepo, serviceRepo, customerRepo, notificationRepo, uow, tokenService, phoneEncryptionService, logger
             );
 
             var controller = new AppointmentsController(svc);
@@ -123,7 +126,7 @@ namespace BookingSystem_Explore.Tests
             {
                 BranchServiceId = branchService.BranchServiceId,
                 AppointmentSlotId = slot.AppointmentSlotId,
-                Customer = new CreateAppointmentRequest.CustomerDto { FirstName = "T", LastName = "U", EmailAddress = "a@b.com", PhoneNumber = "123" },
+                Customer = new CreateAppointmentRequest.CustomerDto { FirstName = "T", LastName = "U", EmailAddress = "a@b.com", PhoneNumber = phoneEncryptionService.Encrypt("123") },
                 Notes = "test"
             };
 

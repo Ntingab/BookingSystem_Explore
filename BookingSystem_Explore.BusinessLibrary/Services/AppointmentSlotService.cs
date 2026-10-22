@@ -15,27 +15,23 @@ namespace BookingSystem_Explore.BusinessLibrary.Services
             _unitOfWork = unitOfWork;
         }
 
+        public async Task<IReadOnlyList<AppointmentSlotResponse>> GetAllAvailableSlotsAsync(CancellationToken cancellationToken)
+        {
+            var slots = await _slotRepository.GetAllAvailableSlotsAsync(cancellationToken);
+            return slots.Select(ToResponse).ToList();
+        }
+
         public async Task<IReadOnlyList<AppointmentSlotResponse>> GetAvailableSlotsAsync(Guid branchServiceId, DateOnly date, CancellationToken cancellationToken)
         {
             var slots = await _slotRepository.GetAvailableSlotsAsync(branchServiceId, date, cancellationToken);
-            return slots.Select(s => new AppointmentSlotResponse
-            {
-                AppointmentSlotId = s.AppointmentSlotId,
-                StartDateTimeUtc = s.StartDateTimeUtc,
-                EndDateTimeUtc = s.EndDateTimeUtc
-            }).ToList();
+            return slots.Select(ToResponse).ToList();
         }
 
         public async Task<AppointmentSlotResponse?> GetSlotByIdAsync(Guid slotId, CancellationToken cancellationToken)
         {
             var s = await _slotRepository.GetByIdAsync(slotId, cancellationToken);
             if (s == null) return null;
-            return new AppointmentSlotResponse
-            {
-                AppointmentSlotId = s.AppointmentSlotId,
-                StartDateTimeUtc = s.StartDateTimeUtc,
-                EndDateTimeUtc = s.EndDateTimeUtc
-            };
+            return ToResponse(s);
         }
 
         public async Task<AppointmentSlotResponse> CreateSlotAsync(BookingSystem_Explore.BusinessLibrary.DTOs.Requests.CreateAppointmentSlotRequest request, CancellationToken cancellationToken)
@@ -101,6 +97,16 @@ namespace BookingSystem_Explore.BusinessLibrary.Services
                 AppointmentSlotId = existing.AppointmentSlotId,
                 StartDateTimeUtc = existing.StartDateTimeUtc,
                 EndDateTimeUtc = existing.EndDateTimeUtc
+            };
+        }
+
+        private static AppointmentSlotResponse ToResponse(BookingSystem_Explore.Domain.Entities.AppointmentSlot slot)
+        {
+            return new AppointmentSlotResponse
+            {
+                AppointmentSlotId = slot.AppointmentSlotId,
+                StartDateTimeUtc = slot.StartDateTimeUtc,
+                EndDateTimeUtc = slot.EndDateTimeUtc
             };
         }
     }

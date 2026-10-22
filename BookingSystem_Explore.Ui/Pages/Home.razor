@@ -58,20 +58,20 @@
 
 					<div class="mb-3">
 						<label class="form-label">Service</label>
-						<InputSelect class="form-select form-select-lg" @bind-Value="_selectedBranchServiceId">
+						<InputSelect class="form-select form-select-lg" @bind-Value="_selectedBranchServiceId" @onchange="OnBranchServiceChangedAsync">
 							<option value="">Select service</option>
 							@foreach (var service in _services)
 							{
-								<option value="@service.ServiceId">@service.ServiceName (@service.DurationMinutes mins)</option>
+								<option value="@service.BranchServiceId">@service.ServiceName (@service.DurationMinutes mins)</option>
 							}
 						</InputSelect>
-						<small class="text-muted">If your API uses a separate BranchServiceId, replace this value with that ID.</small>
+						<small class="text-muted">Branch services are scope-limited per branch.</small>
 					</div>
 
 					<div class="row g-3 align-items-end mb-3">
 						<div class="col-md-6">
 						<label class="form-label">Date</label>
-						<InputDate class="form-control form-control-lg" @bind-Value="_appointmentDate" />
+						<InputDate class="form-control form-control-lg" @bind-Value="_appointmentDate" @onchange="OnDateChangedAsync" />
 						</div>
 						<div class="col-md-6">
 							<button type="button" class="btn btn-outline-primary w-100 btn-lg" @onclick="LoadSlotsAsync">
@@ -170,7 +170,7 @@
 @code {
 	private readonly BookingFormModel _model = new();
 	private List<BranchResponse> _branches = [];
-	private List<ServiceResponse> _services = [];
+	private List<BranchServiceResponse> _services = [];
 	private List<AppointmentSlotResponse> _slots = [];
 
 	private string _selectedBranchId = string.Empty;
@@ -192,11 +192,37 @@
 		_services = [];
 		_slots = [];
 		_selectedSlotId = string.Empty;
+		_error = null;
 
 		if (Guid.TryParse(_selectedBranchId, out var branchId))
 		{
 			_services = await ApiClient.GetBranchServicesAsync(branchId);
+			_selectedBranchServiceId = _services.FirstOrDefault()?.BranchServiceId.ToString() ?? string.Empty;
+
+			if (!string.IsNullOrWhiteSpace(_selectedBranchServiceId))
+			{
+				await LoadSlotsAsync();
+			}
+		}
+		else
+		{
 			_selectedBranchServiceId = string.Empty;
+		}
+	}
+
+	private async Task OnBranchServiceChangedAsync(ChangeEventArgs _)
+	{
+		if (!string.IsNullOrWhiteSpace(_selectedBranchServiceId))
+		{
+			await LoadSlotsAsync();
+		}
+	}
+
+	private async Task OnDateChangedAsync(ChangeEventArgs _)
+	{
+		if (!string.IsNullOrWhiteSpace(_selectedBranchServiceId))
+		{
+			await LoadSlotsAsync();
 		}
 	}
 

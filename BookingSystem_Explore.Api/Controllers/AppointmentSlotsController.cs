@@ -29,6 +29,14 @@ public class AppointmentSlotsController : ControllerBase
         return Ok(res);
     }
 
+    [HttpGet("all")]
+    [ProducesResponseType(typeof(IReadOnlyList<AppointmentSlotResponse>), 200)]
+    public async Task<ActionResult<IReadOnlyList<AppointmentSlotResponse>>> GetAllAvailableSlotsAsync(CancellationToken cancellationToken)
+    {
+        var res = await _slotService.GetAllAvailableSlotsAsync(cancellationToken);
+        return Ok(res);
+    }
+
     [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(AppointmentSlotResponse), 200)]
     [ProducesResponseType(404)]

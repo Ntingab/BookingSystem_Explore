@@ -40,6 +40,11 @@ namespace BookingSystem_Explore.Infrastructure
 
             // Token service: implement Domain.Security.ITokenService
             services.AddSingleton<BookingSystem_Explore.Domain.Security.ITokenService, TokenService>();
+            services.AddSingleton(Microsoft.Extensions.Options.Options.Create(new PhoneEncryptionOptions
+            {
+                Key = configuration["Security:PhoneEncryption:Key"] ?? string.Empty
+            }));
+            services.AddSingleton<BookingSystem_Explore.Domain.Security.IPhoneEncryptionService, PhoneEncryptionService>();
 
             return services;
         }

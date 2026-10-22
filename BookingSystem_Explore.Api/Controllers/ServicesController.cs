@@ -1,4 +1,5 @@
 using BookingSystem_Explore.BusinessLibrary.DTOs.Responses;
+using BookingSystem_Explore.BusinessLibrary.DTOs.Requests;
 using BookingSystem_Explore.BusinessLibrary.Interfaces.Services;
 using Microsoft.AspNetCore.Mvc;
 using Asp.Versioning;
@@ -31,5 +32,23 @@ public class ServicesController : ControllerBase
         var service = await _serviceService.GetServiceByIdAsync(id, cancellationToken);
         if (service == null) return NotFound();
         return Ok(service);
+    }
+
+    [HttpPost]
+    public async Task<ActionResult<ServiceResponse>> AddServiceAsync([FromBody] CreateServiceRequest request, CancellationToken cancellationToken)
+    {
+        if (request == null) return BadRequest();
+        var created = await _serviceService.AddServiceAsync(request, cancellationToken);
+        var version = HttpContext.Request.RouteValues["version"]?.ToString() ?? "1";
+        return CreatedAtAction(nameof(GetServiceByIdAsync), new { id = created.ServiceId, version }, created);
+    }
+
+    [HttpPut("{id:guid}")]
+    public async Task<ActionResult<ServiceResponse>> UpdateServiceAsync(Guid id, [FromBody] UpdateServiceRequest request, CancellationToken cancellationToken)
+    {
+        if (request == null) return BadRequest();
+        var updated = await _serviceService.UpdateServiceAsync(id, request, cancellationToken);
+        if (updated == null) return NotFound();
+        return Ok(updated);
     }
 }

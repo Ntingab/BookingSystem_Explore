@@ -32,5 +32,24 @@ namespace BookingSystem_Explore.Infrastructure.Repositories
                 .AsNoTracking()
                 .ToListAsync(cancellationToken);
         }
+
+        public async Task<BranchService?> GetBranchServiceByIdAsync(Guid branchServiceId, CancellationToken cancellationToken)
+        {
+            return await _db.BranchServices
+                .Include(bs => bs.Service)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(bs => bs.BranchServiceId == branchServiceId, cancellationToken);
+        }
+
+        public async Task AddBranchServiceAsync(BranchService branchService, CancellationToken cancellationToken)
+        {
+            await _db.BranchServices.AddAsync(branchService, cancellationToken);
+        }
+
+        public async Task UpdateBranchServiceAsync(BranchService branchService, CancellationToken cancellationToken)
+        {
+            _db.BranchServices.Update(branchService);
+            await Task.CompletedTask;
+        }
     }
 }

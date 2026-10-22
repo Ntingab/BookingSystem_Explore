@@ -23,5 +23,26 @@ namespace BookingSystem_Explore.BusinessLibrary.Repositories
             var s = _store.Services.FirstOrDefault(x => x.ServiceId == serviceId);
             return Task.FromResult(s);
         }
+
+        public Task AddAsync(Service service, CancellationToken cancellationToken)
+        {
+            _store.Services.Add(service);
+            return Task.CompletedTask;
+        }
+
+        public Task UpdateAsync(Service service, CancellationToken cancellationToken)
+        {
+            var existing = _store.Services.FirstOrDefault(x => x.ServiceId == service.ServiceId);
+            if (existing != null)
+            {
+                existing.ServiceName = service.ServiceName;
+                existing.DurationMinutes = service.DurationMinutes;
+                existing.Description = service.Description;
+                existing.IsActive = service.IsActive;
+                existing.UpdatedDate = service.UpdatedDate;
+            }
+
+            return Task.CompletedTask;
+        }
     }
 }

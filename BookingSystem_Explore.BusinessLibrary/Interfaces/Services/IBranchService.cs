@@ -6,6 +6,8 @@ namespace BookingSystem_Explore.BusinessLibrary.Interfaces.Services
     {
         Task<IReadOnlyList<BranchResponse>> GetBranchesAsync(CancellationToken cancellationToken);
         Task<BranchResponse?> GetBranchByIdAsync(Guid branchId, CancellationToken cancellationToken);
-        Task<IReadOnlyList<ServiceResponse>> GetBranchServicesAsync(Guid branchId, CancellationToken cancellationToken);
+        Task<IReadOnlyList<BranchServiceResponse>> GetBranchServicesAsync(Guid branchId, CancellationToken cancellationToken);
+        Task<BranchServiceResponse> AddBranchServiceAsync(Guid branchId, BookingSystem_Explore.BusinessLibrary.DTOs.Requests.CreateBranchServiceRequest request, CancellationToken cancellationToken);
+        Task<BranchServiceResponse?> UpdateBranchServiceAsync(Guid branchId, Guid branchServiceId, BookingSystem_Explore.BusinessLibrary.DTOs.Requests.UpdateBranchServiceRequest request, CancellationToken cancellationToken);
     }
 }

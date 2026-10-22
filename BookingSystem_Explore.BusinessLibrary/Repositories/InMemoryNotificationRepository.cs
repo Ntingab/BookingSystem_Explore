@@ -18,6 +18,14 @@ namespace BookingSystem_Explore.BusinessLibrary.Repositories
             return Task.CompletedTask;
         }
 
+        public Task<IReadOnlyList<Notification>> GetAllAsync(CancellationToken cancellationToken)
+        {
+            var list = _store.Notifications
+                .OrderByDescending(n => n.CreatedDate)
+                .ToList();
+            return Task.FromResult((IReadOnlyList<Notification>)list);
+        }
+
         public Task UpdateAsync(Notification notification, CancellationToken cancellationToken)
         {
             var existing = _store.Notifications.FirstOrDefault(n => n.NotificationId == notification.NotificationId);

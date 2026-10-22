@@ -23,6 +23,13 @@ public class AppointmentsController : ControllerBase
         private bool TryGetManagementToken(out string? token)
         {
             token = null;
+
+            if (Request.Headers.TryGetValue("X-Management-Token", out var vals) && !string.IsNullOrEmpty(vals.FirstOrDefault()))
+            {
+                token = vals.First();
+                return true;
+            }
+
             if (Request.Headers.TryGetValue("Authorization", out var authVals))
             {
                 var auth = authVals.FirstOrDefault();
@@ -33,12 +40,6 @@ public class AppointmentsController : ControllerBase
                 }
             }
 
-            if (Request.Headers.TryGetValue("X-Management-Token", out var vals) && !string.IsNullOrEmpty(vals.FirstOrDefault()))
-            {
-                token = vals.First();
-                return true;
-            }
-
             return false;
         }
 
@@ -47,7 +48,8 @@ public class AppointmentsController : ControllerBase
     {
         var created = await _appointmentService.BookAppointmentAsync(request, cancellationToken);
         // Use a named route for the GET by id so URL generation is robust
-        return CreatedAtRoute("GetAppointmentById", new { id = created.AppointmentId }, created);
+        var version = HttpContext.Request.RouteValues["version"]?.ToString() ?? "1";
+        return CreatedAtRoute("GetAppointmentById", new { id = created.AppointmentId, version }, created);
     }
 
     [HttpGet("{id:guid}", Name = "GetAppointmentById")]

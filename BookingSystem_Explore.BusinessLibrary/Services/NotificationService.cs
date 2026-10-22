@@ -13,8 +13,14 @@ namespace BookingSystem_Explore.BusinessLibrary.Services
         public NotificationService(IAppointmentRepository appointmentRepository, INotificationRepository notificationRepository, ITokenService tokenService)
         {
             _appointmentRepository = appointmentRepository;
-            _notificationRepository = notificationRepository; // will not be used for read but keep for symmetry
+            _notificationRepository = notificationRepository;
             _tokenService = tokenService;
+        }
+
+        public async Task<IReadOnlyList<object>> GetAllNotificationsAsync(CancellationToken cancellationToken)
+        {
+            var notifications = await _notificationRepository.GetAllAsync(cancellationToken);
+            return notifications.Select(ToResponse).ToList();
         }
 
         public async Task<IReadOnlyList<object>> GetAppointmentNotificationsAsync(Guid appointmentId, string managementToken, CancellationToken cancellationToken)
@@ -28,18 +34,26 @@ namespace BookingSystem_Explore.BusinessLibrary.Services
                 throw new BookingSystem_Explore.BusinessLibrary.Exceptions.UnauthorizedAppointmentAccessException("Invalid management token");
             }
 
-            var list = appointment.Notifications?.Select(n => (object)new
-            {
-                n.NotificationId,
-                Status = n.Status.ToString(),
-                Channel = n.Channel.ToString(),
-                n.Recipient,
-                n.Message,
-                n.CreatedDate,
-                n.ErrorMessage
-            }).ToList() ?? new List<object>();
+            var list = appointment.Notifications?.Select(ToResponse).ToList() ?? new List<object>();
 
             return list;
+        }
+
+        private static object ToResponse(BookingSystem_Explore.Domain.Entities.Notification notification)
+        {
+            return new
+            {
+                notification.NotificationId,
+                notification.AppointmentId,
+                Type = notification.NotificationType.ToString(),
+                Status = notification.Status.ToString(),
+                Channel = notification.Channel.ToString(),
+                notification.Recipient,
+                notification.Message,
+                notification.CreatedDate,
+                notification.SentDate,
+                notification.ErrorMessage
+            };
         }
     }
 }

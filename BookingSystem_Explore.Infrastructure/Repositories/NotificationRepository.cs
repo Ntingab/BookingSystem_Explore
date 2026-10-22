@@ -1,5 +1,6 @@
 using BookingSystem_Explore.Domain.Entities;
 using BookingSystem_Explore.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 
 namespace BookingSystem_Explore.Infrastructure.Repositories
 {
@@ -15,6 +16,14 @@ namespace BookingSystem_Explore.Infrastructure.Repositories
         public async Task AddAsync(Notification notification, CancellationToken cancellationToken)
         {
             await _db.Notifications.AddAsync(notification, cancellationToken);
+        }
+
+        public async Task<IReadOnlyList<Notification>> GetAllAsync(CancellationToken cancellationToken)
+        {
+            return await _db.Notifications
+                .AsNoTracking()
+                .OrderByDescending(n => n.CreatedDate)
+                .ToListAsync(cancellationToken);
         }
 
         public async Task UpdateAsync(Notification notification, CancellationToken cancellationToken)

@@ -22,5 +22,16 @@ namespace BookingSystem_Explore.Infrastructure.Repositories
         {
             return await _db.Services.AsNoTracking().FirstOrDefaultAsync(s => s.ServiceId == serviceId, cancellationToken);
         }
+
+        public async Task AddAsync(Service service, CancellationToken cancellationToken)
+        {
+            await _db.Services.AddAsync(service, cancellationToken);
+        }
+
+        public async Task UpdateAsync(Service service, CancellationToken cancellationToken)
+        {
+            _db.Services.Update(service);
+            await Task.CompletedTask;
+        }
     }
 }

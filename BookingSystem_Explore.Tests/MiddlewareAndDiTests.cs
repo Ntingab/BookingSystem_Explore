@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Headers;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using BookingSystem_Explore.Infrastructure.Persistence;
@@ -19,6 +20,10 @@ namespace BookingSystem_Explore.Tests
         public async Task ExceptionHandlingMiddleware_HandlesExceptions_ReturnsProblemJson()
         {
             var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+            client.DefaultRequestHeaders.Add("X-Client-Id", "booking-ui");
+            client.DefaultRequestHeaders.Add("X-Client-Secret", "Change-This-Client-Secret");
+            client.DefaultRequestHeaders.Add("X-Session-Id", Guid.NewGuid().ToString("N"));
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", TestJwtTokenFactory.Create("read"));
             // Test endpoint is versioned under the API route template
             var resp = await client.GetAsync("/api/v1/test/throw");
             Assert.Equal(HttpStatusCode.InternalServerError, resp.StatusCode);

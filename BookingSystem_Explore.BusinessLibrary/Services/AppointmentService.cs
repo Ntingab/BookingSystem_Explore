@@ -19,6 +19,7 @@ namespace BookingSystem_Explore.BusinessLibrary.Services
         private readonly BookingSystem_Explore.BusinessLibrary.Notifications.SimulatedNotificationProcessor? _simulatedNotificationProcessor;
         private readonly BookingSystem_Explore.Domain.Interfaces.IUnitOfWork _unitOfWork;
         private readonly ITokenService _tokenService;
+        private readonly IPhoneEncryptionService _phoneEncryptionService;
         private readonly ILogger<AppointmentService> _logger;
 
         public AppointmentService(
@@ -30,6 +31,7 @@ namespace BookingSystem_Explore.BusinessLibrary.Services
             INotificationRepository notificationRepository,
             BookingSystem_Explore.Domain.Interfaces.IUnitOfWork unitOfWork,
             ITokenService tokenService,
+            IPhoneEncryptionService phoneEncryptionService,
             ILogger<AppointmentService> logger)
         {
             _appointmentRepository = appointmentRepository;
@@ -41,6 +43,7 @@ namespace BookingSystem_Explore.BusinessLibrary.Services
             _simulatedNotificationProcessor = null;
             _unitOfWork = unitOfWork;
             _tokenService = tokenService;
+            _phoneEncryptionService = phoneEncryptionService;
             _logger = logger;
         }
 
@@ -62,6 +65,11 @@ namespace BookingSystem_Explore.BusinessLibrary.Services
             var occupied = await _appointmentRepository.IsSlotOccupiedAsync(slot.AppointmentSlotId, cancellationToken);
             if (occupied) throw new InvalidOperationException("Slot already occupied");
 
+            if (!_phoneEncryptionService.TryDecrypt(request.Customer.PhoneNumber, out var decryptedPhone))
+            {
+                throw new InvalidOperationException("PhoneNumber must be encrypted.");
+            }
+
             // create customer
             var customer = new Customer
             {
@@ -69,7 +77,7 @@ namespace BookingSystem_Explore.BusinessLibrary.Services
                 FirstName = request.Customer.FirstName,
                 LastName = request.Customer.LastName,
                 EmailAddress = request.Customer.EmailAddress,
-                PhoneNumber = request.Customer.PhoneNumber,
+                PhoneNumber = _phoneEncryptionService.Encrypt(decryptedPhone),
                 CreatedDate = DateTime.UtcNow
             };
             await _customerRepository.AddAsync(customer, cancellationToken);

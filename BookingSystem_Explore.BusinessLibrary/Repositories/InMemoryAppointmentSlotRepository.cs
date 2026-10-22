@@ -29,7 +29,22 @@ namespace BookingSystem_Explore.BusinessLibrary.Repositories
 
         public Task<IReadOnlyList<AppointmentSlot>> GetAvailableSlotsAsync(Guid branchServiceId, DateOnly date, CancellationToken cancellationToken)
         {
-            var slots = _store.Slots.Where(s => s.BranchServiceId == branchServiceId && s.IsActive && s.StartDateTimeUtc.Date == date.ToDateTime(new TimeOnly()).Date).ToList();
+            var occupiedSlotIds = GetOccupiedSlotIds();
+            var slots = _store.Slots
+                .Where(s => s.BranchServiceId == branchServiceId
+                            && s.IsActive
+                            && s.StartDateTimeUtc.Date == date.ToDateTime(new TimeOnly()).Date
+                            && !occupiedSlotIds.Contains(s.AppointmentSlotId))
+                .ToList();
+            return Task.FromResult((IReadOnlyList<AppointmentSlot>)slots);
+        }
+
+        public Task<IReadOnlyList<AppointmentSlot>> GetAllAvailableSlotsAsync(CancellationToken cancellationToken)
+        {
+            var occupiedSlotIds = GetOccupiedSlotIds();
+            var slots = _store.Slots
+                .Where(s => s.IsActive && !occupiedSlotIds.Contains(s.AppointmentSlotId))
+                .ToList();
             return Task.FromResult((IReadOnlyList<AppointmentSlot>)slots);
         }
 
@@ -47,6 +62,21 @@ namespace BookingSystem_Explore.BusinessLibrary.Repositories
                 _store.Slots[idx] = slot;
             }
             return Task.CompletedTask;
+        }
+
+        private HashSet<Guid> GetOccupiedSlotIds()
+        {
+            var occupiedStatuses = new[]
+            {
+                BookingSystem_Explore.Domain.Enums.AppointmentStatus.Confirmed,
+                BookingSystem_Explore.Domain.Enums.AppointmentStatus.Completed,
+                BookingSystem_Explore.Domain.Enums.AppointmentStatus.NoShow
+            };
+
+            return _store.Appointments
+                .Where(a => occupiedStatuses.Contains(a.Status))
+                .Select(a => a.AppointmentSlotId)
+                .ToHashSet();
         }
     }
 }

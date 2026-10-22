@@ -35,5 +35,38 @@ namespace BookingSystem_Explore.BusinessLibrary.Repositories
             }
             return Task.FromResult((IReadOnlyList<BranchService>)services);
         }
+
+        public Task<BranchService?> GetBranchServiceByIdAsync(Guid branchServiceId, CancellationToken cancellationToken)
+        {
+            var branchService = _store.BranchServices.FirstOrDefault(bs => bs.BranchServiceId == branchServiceId);
+            if (branchService != null)
+            {
+                branchService.Service = _store.Services.FirstOrDefault(s => s.ServiceId == branchService.ServiceId);
+                branchService.Branch = _store.Branches.FirstOrDefault(b => b.BranchId == branchService.BranchId);
+            }
+
+            return Task.FromResult(branchService);
+        }
+
+        public Task AddBranchServiceAsync(BranchService branchService, CancellationToken cancellationToken)
+        {
+            _store.BranchServices.Add(branchService);
+            return Task.CompletedTask;
+        }
+
+        public Task UpdateBranchServiceAsync(BranchService branchService, CancellationToken cancellationToken)
+        {
+            var existing = _store.BranchServices.FirstOrDefault(bs => bs.BranchServiceId == branchService.BranchServiceId);
+            if (existing != null)
+            {
+                existing.Price = branchService.Price;
+                existing.IsActive = branchService.IsActive;
+                existing.UpdatedDate = branchService.UpdatedDate;
+                existing.ServiceId = branchService.ServiceId;
+                existing.BranchId = branchService.BranchId;
+            }
+
+            return Task.CompletedTask;
+        }
     }
 }

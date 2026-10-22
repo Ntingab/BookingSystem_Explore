@@ -13,7 +13,7 @@ namespace BookingSystem_Explore.Infrastructure.Persistence.Configurations
             builder.Property(c => c.FirstName).IsRequired().HasMaxLength(100);
             builder.Property(c => c.LastName).IsRequired().HasMaxLength(100);
             builder.Property(c => c.EmailAddress).IsRequired().HasMaxLength(254);
-            builder.Property(c => c.PhoneNumber).IsRequired().HasMaxLength(20);
+            builder.Property(c => c.PhoneNumber).IsRequired().HasMaxLength(512);
             builder.Property(c => c.CreatedDate).IsRequired();
             builder.Property(c => c.UpdatedDate);
 

@@ -36,6 +36,7 @@ namespace BookingSystem_Explore.Api
             builder.Services.Configure<Options.RateLimiterOptions>(configuration.GetSection("RateLimiter"));
             builder.Services.Configure<Options.FeatureFlagsOptions>(configuration.GetSection("FeatureFlags"));
             builder.Services.Configure<Options.CorsOptions>(configuration.GetSection("Cors"));
+            builder.Services.Configure<Options.ClientAccessOptions>(configuration.GetSection("ClientAccess"));
 
             // Central service configuration (controllers, versioning, etc.)
             builder.Services.ConfigureServices(configuration);
@@ -88,22 +89,45 @@ namespace BookingSystem_Explore.Api
             }
 
             // Rate limiting (per-IP token bucket) to mitigate abuse and brute-force attacks.
+            var configuredRateLimit = configuration.GetSection("RateLimiter").Get<Options.RateLimiterOptions>() ?? new Options.RateLimiterOptions();
+            var configuredClientAccess = configuration.GetSection("ClientAccess").Get<Options.ClientAccessOptions>() ?? new Options.ClientAccessOptions();
+
             builder.Services.AddRateLimiter(options =>
             {
                 options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
-                    RateLimitPartition.GetTokenBucketLimiter(
-                        httpContext.Connection.RemoteIpAddress?.ToString() ?? "global",
+                {
+                    var clientId = httpContext.Request.Headers.TryGetValue("X-Client-Id", out var clientValues)
+                        ? clientValues.FirstOrDefault()
+                        : null;
+
+                    var client = configuredClientAccess.Clients.FirstOrDefault(c =>
+                        string.Equals(c.ClientId, clientId, StringComparison.Ordinal));
+
+                    var effectiveLimit = client?.RateLimit ?? new Options.ClientRateLimitOptions
+                    {
+                        TokenLimit = configuredRateLimit.TokenLimit,
+                        TokensPerPeriod = configuredRateLimit.TokensPerPeriod,
+                        ReplenishmentMinutes = configuredRateLimit.ReplenishmentMinutes,
+                        QueueLimit = configuredRateLimit.QueueLimit
+                    };
+
+                    var partitionKey = !string.IsNullOrWhiteSpace(clientId)
+                        ? $"client:{clientId}"
+                        : httpContext.Connection.RemoteIpAddress?.ToString() ?? "global";
+
+                    return RateLimitPartition.GetTokenBucketLimiter(
+                        partitionKey,
                         _ => new TokenBucketRateLimiterOptions
                         {
-                            TokenLimit = 20,
-                            TokensPerPeriod = 20,
-                            ReplenishmentPeriod = TimeSpan.FromMinutes(1),
+                            TokenLimit = effectiveLimit.TokenLimit,
+                            TokensPerPeriod = effectiveLimit.TokensPerPeriod,
+                            ReplenishmentPeriod = TimeSpan.FromMinutes(effectiveLimit.ReplenishmentMinutes),
                             AutoReplenishment = true,
                             QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-                            QueueLimit = 0
+                            QueueLimit = effectiveLimit.QueueLimit
                         }
-                    )
-                );
+                    );
+                });
 
                 // Standard HTTP status code returned when requests are rejected due to rate limiting
                 options.RejectionStatusCode = 429;
@@ -121,6 +145,11 @@ namespace BookingSystem_Explore.Api
 
             app.UseMiddleware<BookingSystem_Explore.Api.Middleware.ExceptionHandlingMiddleware>();
 
+            // Apply CORS before client access checks so browser preflight gets CORS headers.
+            app.UseCors("DefaultCors");
+
+            app.UseMiddleware<BookingSystem_Explore.Api.Middleware.ClientAccessMiddleware>();
+
             // Security headers: simple Content-Security-Policy; customize per requirements
             app.Use(async (context, next) =>
             {
@@ -136,9 +165,6 @@ namespace BookingSystem_Explore.Api
                 c.DocumentTitle = "BookingSystem Explore API";
                 c.RoutePrefix = string.Empty; // serve Swagger UI at application root
             });
-
-            // Use CORS policy
-            app.UseCors("DefaultCors");
 
             // Use rate limiter middleware globally
             app.UseRateLimiter();

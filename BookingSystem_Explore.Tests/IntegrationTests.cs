@@ -5,6 +5,9 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.EntityFrameworkCore;
 using BookingSystem_Explore.Infrastructure.Persistence;
+using BookingSystem_Explore.Infrastructure.Security;
+using Microsoft.Extensions.Options;
+using System.Net.Http.Headers;
 using Xunit;
 
 namespace BookingSystem_Explore.Tests
@@ -72,6 +75,13 @@ namespace BookingSystem_Explore.Tests
         public async Task BookingJourney_EndToEnd_Works()
         {
             var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+            client.DefaultRequestHeaders.Add("X-Client-Id", "booking-ui");
+            client.DefaultRequestHeaders.Add("X-Client-Secret", "Change-This-Client-Secret");
+            client.DefaultRequestHeaders.Add("X-Session-Id", Guid.NewGuid().ToString("N"));
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", TestJwtTokenFactory.Create("read write"));
+
+            var phoneEncryptionService = new PhoneEncryptionService(
+                Options.Create(new PhoneEncryptionOptions { Key = "Change-This-Phone-Encryption-Key" }));
 
             // 1 - get branches
             var branchesResp = await client.GetAsync("/api/v1/branches");
@@ -83,12 +93,12 @@ namespace BookingSystem_Explore.Tests
             // 2 - get branch services
             var svcResp = await client.GetAsync($"/api/v1/branches/{branchId}/services");
             svcResp.EnsureSuccessStatusCode();
-            var svcs = await svcResp.Content.ReadFromJsonAsync<IReadOnlyList<ServiceResponse>>();
+            var svcs = await svcResp.Content.ReadFromJsonAsync<IReadOnlyList<BranchServiceResponse>>();
             Assert.NotNull(svcs);
-            var branchServiceId = svcs!.First().ServiceId; // note: BranchServiceId not exposed, assume service id
+            var branchServiceId = svcs!.First().BranchServiceId;
 
             // 3 - get available slots for today
-            var date = DateTime.UtcNow.Date.ToString("yyyy-MM-dd");
+            var date = DateTime.UtcNow.Date.AddDays(1).ToString("yyyy-MM-dd");
             var slotsResp = await client.GetAsync($"/api/v1/appointment-slots?branchServiceId={branchServiceId}&date={date}");
             slotsResp.EnsureSuccessStatusCode();
             var slots = await slotsResp.Content.ReadFromJsonAsync<IReadOnlyList<BookingSystem_Explore.BusinessLibrary.DTOs.Responses.AppointmentSlotResponse>>();
@@ -100,7 +110,7 @@ namespace BookingSystem_Explore.Tests
             {
                 BranchServiceId = branchServiceId,
                 AppointmentSlotId = slotId,
-                Customer = new CreateAppointmentRequest.CustomerDto { FirstName = "IT", LastName = "Test", EmailAddress = "it@test.com", PhoneNumber = "123" },
+                Customer = new CreateAppointmentRequest.CustomerDto { FirstName = "IT", LastName = "Test", EmailAddress = "it@test.com", PhoneNumber = phoneEncryptionService.Encrypt("123") },
                 Notes = "integration test"
             };
 
