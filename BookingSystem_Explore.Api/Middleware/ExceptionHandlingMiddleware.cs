@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace BookingSystem_Explore.Api.Middleware;
 
@@ -34,6 +35,10 @@ public class ExceptionHandlingMiddleware
 
         switch (exception)
         {
+            case DbUpdateException dbUpdateException when IsDuplicateBranchCode(dbUpdateException):
+                status = StatusCodes.Status409Conflict;
+                detail = "A branch with this branch code already exists.";
+                break;
             case BookingSystem_Explore.BusinessLibrary.Exceptions.UnauthorizedAppointmentAccessException:
                 status = StatusCodes.Status401Unauthorized;
                 detail = exception.Message;
@@ -59,6 +64,19 @@ public class ExceptionHandlingMiddleware
         context.Response.ContentType = "application/problem+json";
         context.Response.StatusCode = status;
         return context.Response.WriteAsync(json);
+    }
+
+    private static bool IsDuplicateBranchCode(Exception exception)
+    {
+        for (var current = exception; current is not null; current = current.InnerException)
+        {
+            if (current.Message.Contains("UQ_Branches_BranchCode", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static string GetReasonPhrase(int status)

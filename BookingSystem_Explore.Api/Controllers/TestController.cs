@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using BookingSystem_Explore.Infrastructure.Constants;
 using Asp.Versioning;
+using Microsoft.EntityFrameworkCore;
 
 namespace BookingSystem_Explore.Api.Controllers
 {
@@ -21,6 +22,15 @@ namespace BookingSystem_Explore.Api.Controllers
         {
             if (!_environment.IsDevelopment() && !_environment.IsEnvironment("IntegrationTests")) return NotFound();
             throw new System.Exception("Test exception from TestController");
+        }
+
+        [HttpGet("throw-duplicate")]
+        public IActionResult ThrowDuplicate()
+        {
+            if (!_environment.IsDevelopment() && !_environment.IsEnvironment("IntegrationTests")) return NotFound();
+            throw new DbUpdateException(
+                "An error occurred while saving the entity changes.",
+                new Exception("Violation of UNIQUE KEY constraint 'UQ_Branches_BranchCode'."));
         }
     }
 }

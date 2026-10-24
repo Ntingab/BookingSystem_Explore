@@ -63,7 +63,7 @@ public class BookingApiClient
     {
         using var message = await CreateRequestAsync(HttpMethod.Get, route, cancellationToken);
         using var response = await _httpClient.SendAsync(message, cancellationToken);
-        response.EnsureSuccessStatusCode();
+        await EnsureSuccessAsync(response, cancellationToken);
         return await DeserializeResponseAsync<T>(response, cancellationToken);
     }
 
@@ -72,9 +72,32 @@ public class BookingApiClient
         using var message = await CreateRequestAsync(method, route, cancellationToken);
         message.Content = JsonContent.Create(request);
         using var response = await _httpClient.SendAsync(message, cancellationToken);
-        response.EnsureSuccessStatusCode();
+        await EnsureSuccessAsync(response, cancellationToken);
         return await DeserializeResponseAsync<T>(response, cancellationToken)
             ?? throw new InvalidOperationException("API returned an empty response.");
+    }
+
+    private static async Task EnsureSuccessAsync(HttpResponseMessage response, CancellationToken cancellationToken)
+    {
+        if (response.IsSuccessStatusCode)
+        {
+            return;
+        }
+
+        ApiProblemDetails? problem = null;
+        try
+        {
+            problem = await response.Content.ReadFromJsonAsync<ApiProblemDetails>(JsonOptions, cancellationToken);
+        }
+        catch (JsonException)
+        {
+            // Fall back to the standard HTTP error when the API did not return problem details.
+        }
+
+        throw new HttpRequestException(
+            problem?.Detail ?? $"The API request failed with status code {(int)response.StatusCode}.",
+            null,
+            response.StatusCode);
     }
 
     private async Task<HttpRequestMessage> CreateRequestAsync(HttpMethod method, string route, CancellationToken cancellationToken)
@@ -92,5 +115,10 @@ public class BookingApiClient
     {
         await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
         return await JsonSerializer.DeserializeAsync<T>(stream, JsonOptions, cancellationToken);
+    }
+
+    private sealed class ApiProblemDetails
+    {
+        public string? Detail { get; init; }
     }
 }

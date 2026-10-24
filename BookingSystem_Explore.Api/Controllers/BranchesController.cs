@@ -39,7 +39,7 @@ public class BranchesController : ControllerBase
     {
         var created = await _branchService.AddBranchAsync(request, cancellationToken);
         var version = HttpContext.Request.RouteValues["version"]?.ToString() ?? "1";
-        return CreatedAtAction(nameof(GetBranchByIdAsync), new { id = created.BranchId, version }, created);
+        return CreatedAtAction("GetBranchById", new { id = created.BranchId, version }, created);
     }
 
     [HttpPut("{id:guid}")]
@@ -62,7 +62,7 @@ public class BranchesController : ControllerBase
         if (request == null) return BadRequest();
         var created = await _branchService.AddBranchServiceAsync(id, request, cancellationToken);
         var version = HttpContext.Request.RouteValues["version"]?.ToString() ?? "1";
-        return CreatedAtAction(nameof(GetBranchServicesAsync), new { id, version }, created);
+        return CreatedAtAction("GetBranchServices", new { id, version }, created);
     }
 
     [HttpPut("{id:guid}/services/{branchServiceId:guid}")]

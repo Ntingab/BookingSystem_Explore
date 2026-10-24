@@ -34,6 +34,24 @@ namespace BookingSystem_Explore.Tests
         }
 
         [Fact]
+        public async Task ExceptionHandlingMiddleware_DuplicateBranchCode_ReturnsConflictMessage()
+        {
+            var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+            client.DefaultRequestHeaders.Add("X-Client-Id", "booking-ui");
+            client.DefaultRequestHeaders.Add("X-Session-Id", Guid.NewGuid().ToString("N"));
+            var tokenResponse = await client.PostAsJsonAsync("/api/v1/auth/token", new { ClientId = "booking-ui" });
+            tokenResponse.EnsureSuccessStatusCode();
+            var token = await tokenResponse.Content.ReadFromJsonAsync<AccessTokenResponse>();
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token!.AccessToken);
+
+            var response = await client.GetAsync("/api/v1/test/throw-duplicate");
+            var problem = await response.Content.ReadFromJsonAsync<Microsoft.AspNetCore.Mvc.ProblemDetails>();
+
+            Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+            Assert.Equal("A branch with this branch code already exists.", problem?.Detail);
+        }
+
+        [Fact]
         public void Services_Are_Registered_In_DI()
         {
             var services = _factory.Services;

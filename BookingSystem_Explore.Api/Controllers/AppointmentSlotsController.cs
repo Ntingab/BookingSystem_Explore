@@ -56,7 +56,7 @@ public class AppointmentSlotsController : ControllerBase
         var created = await _slotService.CreateSlotAsync(request, cancellationToken);
         // include api version route value so CreatedAtAction can resolve the route
         var version = HttpContext.Request.RouteValues["version"]?.ToString() ?? "1";
-        return CreatedAtAction(nameof(GetSlotByIdAsync), new { id = created.AppointmentSlotId, version }, created);
+        return CreatedAtAction("GetSlotById", new { id = created.AppointmentSlotId, version }, created);
     }
 
     [HttpPut("{id:guid}")]
