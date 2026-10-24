@@ -25,21 +25,24 @@ namespace BookingSystem_Explore.Infrastructure.Repositories
 
         public async Task<IReadOnlyList<AppointmentSlot>> GetAvailableSlotsAsync(Guid branchServiceId, DateOnly date, CancellationToken cancellationToken)
         {
-            // Load branch service and branch timezone
-            var bs = await _db.BranchServices.Include(b => b.Branch).FirstOrDefaultAsync(b => b.BranchServiceId == branchServiceId, cancellationToken);
-            if (bs == null) return Array.Empty<AppointmentSlot>();
+            var timeZoneId = await _db.BranchServices
+                .Where(branchService => branchService.BranchServiceId == branchServiceId)
+                .Select(branchService => branchService.Branch.TimeZoneId)
+                .SingleOrDefaultAsync(cancellationToken);
+            if (timeZoneId is null) return [];
 
-            var tz = TimeZoneInfo.FindSystemTimeZoneById(bs.Branch.TimeZoneId);
+            var tz = TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
             var localStart = date.ToDateTime(new TimeOnly(0,0));
             var localEnd = localStart.AddDays(1);
             var utcStart = TimeZoneInfo.ConvertTimeToUtc(localStart, tz);
             var utcEnd = TimeZoneInfo.ConvertTimeToUtc(localEnd, tz);
 
-            var occupiedStatuses = GetOccupiedStatuses();
-
             var slots = await _db.AppointmentSlots
                 .Where(s => s.BranchServiceId == branchServiceId && s.IsActive && s.StartDateTimeUtc >= utcStart && s.StartDateTimeUtc < utcEnd)
-                .Where(s => !_db.Appointments.Any(a => a.AppointmentSlotId == s.AppointmentSlotId && occupiedStatuses.Contains(a.Status)))
+                .Where(s => !_db.Appointments.Any(a => a.AppointmentSlotId == s.AppointmentSlotId &&
+                    (a.Status == BookingSystem_Explore.Domain.Enums.AppointmentStatus.Confirmed ||
+                     a.Status == BookingSystem_Explore.Domain.Enums.AppointmentStatus.Completed ||
+                     a.Status == BookingSystem_Explore.Domain.Enums.AppointmentStatus.NoShow)))
                 .AsNoTracking()
                 .ToListAsync(cancellationToken);
 
@@ -48,11 +51,12 @@ namespace BookingSystem_Explore.Infrastructure.Repositories
 
         public async Task<IReadOnlyList<AppointmentSlot>> GetAllAvailableSlotsAsync(CancellationToken cancellationToken)
         {
-            var occupiedStatuses = GetOccupiedStatuses();
-
             return await _db.AppointmentSlots
                 .Where(s => s.IsActive)
-                .Where(s => !_db.Appointments.Any(a => a.AppointmentSlotId == s.AppointmentSlotId && occupiedStatuses.Contains(a.Status)))
+                .Where(s => !_db.Appointments.Any(a => a.AppointmentSlotId == s.AppointmentSlotId &&
+                    (a.Status == BookingSystem_Explore.Domain.Enums.AppointmentStatus.Confirmed ||
+                     a.Status == BookingSystem_Explore.Domain.Enums.AppointmentStatus.Completed ||
+                     a.Status == BookingSystem_Explore.Domain.Enums.AppointmentStatus.NoShow)))
                 .AsNoTracking()
                 .ToListAsync(cancellationToken);
         }
@@ -68,14 +72,5 @@ namespace BookingSystem_Explore.Infrastructure.Repositories
             return Task.CompletedTask;
         }
 
-        private static List<BookingSystem_Explore.Domain.Enums.AppointmentStatus> GetOccupiedStatuses()
-        {
-            return new List<BookingSystem_Explore.Domain.Enums.AppointmentStatus>
-            {
-                BookingSystem_Explore.Domain.Enums.AppointmentStatus.Confirmed,
-                BookingSystem_Explore.Domain.Enums.AppointmentStatus.Completed,
-                BookingSystem_Explore.Domain.Enums.AppointmentStatus.NoShow
-            };
-        }
     }
 }

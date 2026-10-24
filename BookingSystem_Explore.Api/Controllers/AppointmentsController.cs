@@ -19,19 +19,19 @@ public class AppointmentsController : ControllerBase
         _appointmentService = appointmentService;
     }
 
-        // Management tokens are separate from API access bearer tokens.
-        private bool TryGetManagementToken(out string? token)
+    // Management tokens are separate from API access bearer tokens.
+    private bool TryGetManagementToken(out string? token)
+    {
+        token = null;
+
+        if (Request.Headers.TryGetValue("X-Management-Token", out var vals) && !string.IsNullOrEmpty(vals.FirstOrDefault()))
         {
-            token = null;
-
-            if (Request.Headers.TryGetValue("X-Management-Token", out var vals) && !string.IsNullOrEmpty(vals.FirstOrDefault()))
-            {
-                token = vals.First();
-                return true;
-            }
-
-            return false;
+            token = vals.First();
+            return true;
         }
+
+        return false;
+    }
 
     [HttpPost]
     public async Task<ActionResult<AppointmentCreatedResponse>> BookAppointmentAsync([FromBody] CreateAppointmentRequest request, CancellationToken cancellationToken)
@@ -61,14 +61,10 @@ public class AppointmentsController : ControllerBase
     [HttpGet("reference/{reference}")]
     public async Task<ActionResult<AppointmentResponse>> GetAppointmentByReferenceAsync(string reference, CancellationToken cancellationToken = default)
     {
-        if (!Request.Headers.TryGetValue("X-Management-Token", out var vals) || string.IsNullOrEmpty(vals.FirstOrDefault()))
-        {
-            return Unauthorized();
-        }
-        var token = vals.First();
+        if (!TryGetManagementToken(out var token)) return Unauthorized();
         try
         {
-            var res = await _appointmentService.GetAppointmentByReferenceAsync(reference, token, cancellationToken);
+            var res = await _appointmentService.GetAppointmentByReferenceAsync(reference, token!, cancellationToken);
             if (res == null) return NotFound();
             return Ok(res);
         }

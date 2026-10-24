@@ -48,14 +48,12 @@ namespace BookingSystem_Explore.Infrastructure.Repositories
 
         public async Task<bool> IsSlotOccupiedAsync(Guid appointmentSlotId, CancellationToken cancellationToken)
         {
-            var occupiedStatuses = new List<BookingSystem_Explore.Domain.Enums.AppointmentStatus>
-            {
-                BookingSystem_Explore.Domain.Enums.AppointmentStatus.Confirmed,
-                BookingSystem_Explore.Domain.Enums.AppointmentStatus.Completed,
-                BookingSystem_Explore.Domain.Enums.AppointmentStatus.NoShow
-            };
-
-            return await _db.Appointments.AnyAsync(a => a.AppointmentSlotId == appointmentSlotId && occupiedStatuses.Contains(a.Status), cancellationToken);
+            return await _db.Appointments.AnyAsync(
+                a => a.AppointmentSlotId == appointmentSlotId &&
+                    (a.Status == BookingSystem_Explore.Domain.Enums.AppointmentStatus.Confirmed ||
+                     a.Status == BookingSystem_Explore.Domain.Enums.AppointmentStatus.Completed ||
+                     a.Status == BookingSystem_Explore.Domain.Enums.AppointmentStatus.NoShow),
+                cancellationToken);
         }
     }
 }

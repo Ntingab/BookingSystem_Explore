@@ -11,7 +11,6 @@ namespace BookingSystem_Explore.Infrastructure
     {
         public static IServiceCollection AddInfrastructureServices(this IServiceCollection services, IConfiguration configuration, bool skipDbRegistration = false)
         {
-            var conn = configuration.GetConnectionString("DefaultConnection");
             var cfgUseInMemory = configuration["UseInMemoryDb"];
             var useInMemoryDb = string.Equals(cfgUseInMemory, "true", System.StringComparison.OrdinalIgnoreCase);
             if (!useInMemoryDb && string.IsNullOrWhiteSpace(cfgUseInMemory))
@@ -26,6 +25,12 @@ namespace BookingSystem_Explore.Infrastructure
                 !useInMemoryDb &&
                 !services.Any(sd => sd.ServiceType == typeof(Microsoft.EntityFrameworkCore.DbContextOptions<AppointmentBookingDbContext>)))
             {
+                var conn = configuration.GetConnectionString("DefaultConnection");
+                if (string.IsNullOrWhiteSpace(conn))
+                {
+                    throw new InvalidOperationException("ConnectionStrings:DefaultConnection must be supplied by user secrets, an environment variable, or another secure configuration provider.");
+                }
+
                 services.AddDbContext<AppointmentBookingDbContext>(options => options.UseSqlServer(conn));
             }
 

@@ -8,11 +8,11 @@ using Xunit;
 
 namespace BookingSystem_Explore.Tests
 {
-    public class MiddlewareAndDiTests : IClassFixture<WebApplicationFactory<BookingSystem_Explore.Api.Program>>
+    public class MiddlewareAndDiTests : IClassFixture<BookingWebApplicationFactory>
     {
-        private readonly WebApplicationFactory<BookingSystem_Explore.Api.Program> _factory;
+        private readonly BookingWebApplicationFactory _factory;
 
-        public MiddlewareAndDiTests(WebApplicationFactory<BookingSystem_Explore.Api.Program> factory)
+        public MiddlewareAndDiTests(BookingWebApplicationFactory factory)
         {
             _factory = factory;
         }

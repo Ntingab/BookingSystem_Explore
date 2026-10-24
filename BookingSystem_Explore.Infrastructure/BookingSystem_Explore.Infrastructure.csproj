@@ -38,7 +38,6 @@
   </ItemGroup>
   <!-- Infrastructure depends on Domain for entities and repository abstractions -->
   <ItemGroup>
-    <ProjectReference Include="C:\\Work\\BookingSystem_Explore\\BookingSystem_Explore.Domain\\BookingSystem_Explore.Domain.csproj" />
     <ProjectReference Include="..\BookingSystem_Explore.Domain\BookingSystem_Explore.Domain.csproj" />
   </ItemGroup>
 

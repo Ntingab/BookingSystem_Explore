@@ -69,6 +69,12 @@ namespace BookingSystem_Explore.Tests
             Assert.NotNull(response);
             Assert.False(string.IsNullOrWhiteSpace(response.ManagementToken));
             Assert.Equal(response.StartDateTimeUtc, slot.StartDateTimeUtc);
+
+            var byReference = await svc.GetAppointmentByReferenceAsync(
+                response.AppointmentReference,
+                response.ManagementToken,
+                CancellationToken.None);
+            Assert.Equal(response.AppointmentId, byReference?.AppointmentId);
         }
 
         [Fact]

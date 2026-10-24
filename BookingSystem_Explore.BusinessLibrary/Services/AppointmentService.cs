@@ -30,7 +30,8 @@ namespace BookingSystem_Explore.BusinessLibrary.Services
             INotificationRepository notificationRepository,
             BookingSystem_Explore.Domain.Interfaces.IUnitOfWork unitOfWork,
             ITokenService tokenService,
-            ILogger<AppointmentService> logger)
+            ILogger<AppointmentService> logger,
+            BookingSystem_Explore.BusinessLibrary.Notifications.SimulatedNotificationProcessor? simulatedNotificationProcessor = null)
         {
             _appointmentRepository = appointmentRepository;
             _slotRepository = slotRepository;
@@ -38,7 +39,7 @@ namespace BookingSystem_Explore.BusinessLibrary.Services
             _serviceRepository = serviceRepository;
             _customerRepository = customerRepository;
             _notificationRepository = notificationRepository;
-            _simulatedNotificationProcessor = null;
+            _simulatedNotificationProcessor = simulatedNotificationProcessor;
             _unitOfWork = unitOfWork;
             _tokenService = tokenService;
             _logger = logger;
@@ -132,35 +133,14 @@ namespace BookingSystem_Explore.BusinessLibrary.Services
         {
             var appointment = await _appointmentRepository.GetByIdAsync(appointmentId, cancellationToken);
             if (appointment == null) return null;
-
-            // verify management token using stored token hash on appointment
-            var tokenHash = appointment.ManagementTokenHash;
-            var isValidToken = _tokenService.Verify(managementToken, tokenHash);
-
-            if (!isValidToken)
-            {
-                throw new BookingSystem_Explore.BusinessLibrary.Exceptions.UnauthorizedAppointmentAccessException("Invalid management token");
-            }
-
-            return new AppointmentResponse
-            {
-                AppointmentId = appointment.AppointmentId,
-                AppointmentReference = appointment.AppointmentReference,
-                Status = appointment.Status.ToString(),
-                BranchName = appointment.AppointmentSlot?.BranchService?.Branch?.BranchName ?? string.Empty,
-                ServiceName = appointment.AppointmentSlot?.BranchService?.Service?.ServiceName ?? string.Empty,
-                StartDateTimeUtc = appointment.AppointmentSlot?.StartDateTimeUtc ?? default,
-                EndDateTimeUtc = appointment.AppointmentSlot?.EndDateTimeUtc ?? default,
-                NotificationStatus = appointment.Notifications?.OrderByDescending(n => n.CreatedDate).FirstOrDefault()?.Status.ToString() ?? string.Empty
-            };
+            return CreateResponse(appointment, managementToken);
         }
 
         public async Task<AppointmentResponse?> GetAppointmentByReferenceAsync(string reference, string managementToken, CancellationToken cancellationToken)
         {
             var appointment = await _appointmentRepository.GetByReferenceAsync(reference, cancellationToken);
             if (appointment == null) return null;
-            // reuse GetAppointmentAsync logic by verifying token
-            return await GetAppointmentAsync(appointment.AppointmentId, managementToken, cancellationToken);
+            return CreateResponse(appointment, managementToken);
         }
 
         public async Task<AppointmentResponse> CancelAppointmentAsync(Guid appointmentId, string managementToken, CancellationToken cancellationToken)
@@ -212,7 +192,6 @@ namespace BookingSystem_Explore.BusinessLibrary.Services
             // process notification but do not rollback on failure
             try
             {
-                // Prefer a DI-provided processor if available; otherwise create a processor with a compatible logger.
                 var processor = _simulatedNotificationProcessor
                     ?? new BookingSystem_Explore.BusinessLibrary.Notifications.SimulatedNotificationProcessor(
                         _notificationRepository,
@@ -235,6 +214,26 @@ namespace BookingSystem_Explore.BusinessLibrary.Services
                 StartDateTimeUtc = appointment.AppointmentSlot?.StartDateTimeUtc ?? default,
                 EndDateTimeUtc = appointment.AppointmentSlot?.EndDateTimeUtc ?? default,
                 NotificationStatus = notification.Status.ToString()
+            };
+        }
+
+        private AppointmentResponse CreateResponse(Appointment appointment, string managementToken)
+        {
+            if (!_tokenService.Verify(managementToken, appointment.ManagementTokenHash))
+            {
+                throw new BookingSystem_Explore.BusinessLibrary.Exceptions.UnauthorizedAppointmentAccessException("Invalid management token");
+            }
+
+            return new AppointmentResponse
+            {
+                AppointmentId = appointment.AppointmentId,
+                AppointmentReference = appointment.AppointmentReference,
+                Status = appointment.Status.ToString(),
+                BranchName = appointment.AppointmentSlot?.BranchService?.Branch?.BranchName ?? string.Empty,
+                ServiceName = appointment.AppointmentSlot?.BranchService?.Service?.ServiceName ?? string.Empty,
+                StartDateTimeUtc = appointment.AppointmentSlot?.StartDateTimeUtc ?? default,
+                EndDateTimeUtc = appointment.AppointmentSlot?.EndDateTimeUtc ?? default,
+                NotificationStatus = appointment.Notifications?.MaxBy(n => n.CreatedDate)?.Status.ToString() ?? string.Empty
             };
         }
     }

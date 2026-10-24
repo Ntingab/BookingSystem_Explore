@@ -20,13 +20,6 @@ namespace BookingSystem_Explore.Api
 
             ConfigureDevelopmentSecrets(builder);
 
-            // Disable strict DI validation at build time to avoid runtime type resolution issues
-            builder.Host.UseDefaultServiceProvider(options =>
-            {
-                options.ValidateOnBuild = false;
-                options.ValidateScopes = false;
-            });
-
             // Add services to the container.
             builder.Services.AddControllers(options =>
             {
@@ -99,26 +92,18 @@ namespace BookingSystem_Explore.Api
             {
                 options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
                 {
-                    var effectiveLimit = new Options.ClientRateLimitOptions
-                    {
-                        TokenLimit = configuredRateLimit.TokenLimit,
-                        TokensPerPeriod = configuredRateLimit.TokensPerPeriod,
-                        ReplenishmentMinutes = configuredRateLimit.ReplenishmentMinutes,
-                        QueueLimit = configuredRateLimit.QueueLimit
-                    };
-
                     var partitionKey = httpContext.Connection.RemoteIpAddress?.ToString() ?? "global";
 
                     return RateLimitPartition.GetTokenBucketLimiter(
                         partitionKey,
                         _ => new TokenBucketRateLimiterOptions
                         {
-                            TokenLimit = effectiveLimit.TokenLimit,
-                            TokensPerPeriod = effectiveLimit.TokensPerPeriod,
-                            ReplenishmentPeriod = TimeSpan.FromMinutes(effectiveLimit.ReplenishmentMinutes),
+                            TokenLimit = configuredRateLimit.TokenLimit,
+                            TokensPerPeriod = configuredRateLimit.TokensPerPeriod,
+                            ReplenishmentPeriod = TimeSpan.FromMinutes(configuredRateLimit.ReplenishmentMinutes),
                             AutoReplenishment = true,
                             QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-                            QueueLimit = effectiveLimit.QueueLimit
+                            QueueLimit = configuredRateLimit.QueueLimit
                         }
                     );
                 });

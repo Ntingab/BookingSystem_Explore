@@ -1,14 +1,13 @@
 using System.Net;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Xunit;
 
 namespace BookingSystem_Explore.Tests
 {
-    public class StartupTests : IClassFixture<WebApplicationFactory<BookingSystem_Explore.Api.Program>>
+    public class StartupTests : IClassFixture<BookingWebApplicationFactory>
     {
-        private readonly WebApplicationFactory<BookingSystem_Explore.Api.Program> _factory;
+        private readonly BookingWebApplicationFactory _factory;
 
-        public StartupTests(WebApplicationFactory<BookingSystem_Explore.Api.Program> factory)
+        public StartupTests(BookingWebApplicationFactory factory)
         {
             _factory = factory;
         }
