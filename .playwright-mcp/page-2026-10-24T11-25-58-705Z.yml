@@ -1,0 +1,83 @@
+- generic [ref=e7]:
+  - generic [ref=e8]:
+    - link "Booking System UI" [ref=e11] [cursor=pointer]:
+      - /url: ""
+    - navigation [ref=e13]:
+      - link "Book Appointment" [ref=e15] [cursor=pointer]:
+        - /url: ""
+        - generic [ref=e16]: 
+        - text: Book Appointment
+  - main [ref=e17]:
+    - generic [ref=e18]:
+      - generic [ref=e19]:
+        - generic [ref=e20]: 
+        - generic [ref=e21]: Appointment Booking Portal
+      - link "UI reference" [ref=e22] [cursor=pointer]:
+        - /url: https://demos.blazorbootstrap.com/
+    - article [ref=e23]:
+      - generic [ref=e24]:
+        - generic [ref=e25]:
+          - heading "Book your branch appointment" [level=1] [ref=e26]
+          - paragraph [ref=e27]: "Fast 3-step flow inspired by BlazorBootstrap demos: choose location, choose slot, submit details."
+        - generic [ref=e28]: Live API
+      - generic [ref=e29]:
+        - generic [ref=e30]:
+          - generic [ref=e31]: "1"
+          - generic [ref=e32]: Location & Service
+        - generic [ref=e33]:
+          - generic [ref=e34]: "2"
+          - generic [ref=e35]: Appointment Slot
+        - generic [ref=e36]:
+          - generic [ref=e37]: "3"
+          - generic [ref=e38]: Confirmation
+      - generic [ref=e39]:
+        - generic [ref=e42]:
+          - heading "Create appointment" [level=5] [ref=e43]
+          - generic [ref=e85]: No slots available for the selected date.
+          - generic [ref=e44]:
+            - generic [ref=e45]:
+              - generic [ref=e46]: Branch
+              - combobox [ref=e47]:
+                - option "Select branch"
+                - option "Sandton Branch (Sandton)"
+                - option "Midrand Branch (Midrand)" [selected]
+                - option "Pretoria Branch (Pretoria)"
+            - generic [ref=e48]:
+              - generic [ref=e49]: Service
+              - combobox [active] [ref=e50]:
+                - option "Select service"
+                - option "Document Verification (20 mins)" [selected]
+                - option "General Enquiry (30 mins)"
+              - text: Branch services are scope-limited per branch.
+            - generic [ref=e51]:
+              - generic [ref=e52]:
+                - generic [ref=e53]: Date
+                - textbox [ref=e54]: 2026-10-24
+              - button " Load available slots" [ref=e56] [cursor=pointer]:
+                - generic [ref=e57]: 
+                - text: Load available slots
+            - generic [ref=e58]:
+              - generic [ref=e59]: Time slot
+              - combobox [ref=e60]:
+                - option "Select slot" [selected]
+            - generic [ref=e61]:
+              - generic [ref=e62]:
+                - generic [ref=e63]: First name
+                - textbox "Jane" [ref=e64]
+              - generic [ref=e65]:
+                - generic [ref=e66]: Last name
+                - textbox "Doe" [ref=e67]
+            - generic [ref=e68]:
+              - generic [ref=e69]:
+                - generic [ref=e70]: Email
+                - textbox "jane@example.com" [ref=e71]
+              - generic [ref=e72]:
+                - generic [ref=e73]: Phone
+                - textbox "+27 82 000 0000" [ref=e74]
+            - generic [ref=e75]:
+              - generic [ref=e76]: Notes
+              - textbox [ref=e77]
+            - button "Book appointment" [ref=e78] [cursor=pointer]
+        - generic [ref=e81]:
+          - heading "Confirmation" [level=5] [ref=e82]
+          - paragraph [ref=e83]: Submit a booking to view the simulated confirmation details.

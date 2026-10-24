@@ -1,0 +1,474 @@
+@page "/admin"
+@inject BookingSystem_Explore.Ui.Services.BookingApiClient ApiClient
+
+<PageTitle>Manage Branches</PageTitle>
+
+<h1 class="mb-4">Branch administration</h1>
+
+@if (!string.IsNullOrWhiteSpace(_message))
+{
+	<div class="alert @(_hasError ? "alert-danger" : "alert-success")">@_message</div>
+}
+
+<div class="card border-0 shadow-sm mb-4">
+	<div class="card-body">
+		<h5 class="card-title">@(_editingBranchId is null ? "Add branch" : "Update branch")</h5>
+		<EditForm Model="_branch" OnValidSubmit="SaveBranchAsync">
+			<DataAnnotationsValidator />
+			<ValidationSummary />
+			<div class="row g-3">
+				<div class="col-md-2">
+					<label class="form-label">Code</label>
+					<InputText class="form-control" @bind-Value="_branch.BranchCode" />
+				</div>
+				<div class="col-md-4">
+					<label class="form-label">Name</label>
+					<InputText class="form-control" @bind-Value="_branch.BranchName" />
+				</div>
+				<div class="col-md-3">
+					<label class="form-label">City</label>
+					<InputText class="form-control" @bind-Value="_branch.City" />
+				</div>
+				<div class="col-md-3">
+					<label class="form-label">Province</label>
+					<InputText class="form-control" @bind-Value="_branch.Province" />
+				</div>
+				<div class="col-md-6">
+					<label class="form-label">Address</label>
+					<InputText class="form-control" @bind-Value="_branch.Address" />
+				</div>
+				<div class="col-md-3">
+					<label class="form-label">Contact number</label>
+					<InputText class="form-control" @bind-Value="_branch.ContactNumber" />
+				</div>
+				<div class="col-md-3">
+					<label class="form-label">Time zone</label>
+					<InputText class="form-control" @bind-Value="_branch.TimeZoneId" />
+				</div>
+				<div class="col-12 form-check ms-2">
+					<InputCheckbox class="form-check-input" @bind-Value="_branch.IsActive" />
+					<label class="form-check-label">Active</label>
+				</div>
+			</div>
+			<div class="mt-3 d-flex gap-2">
+				<button class="btn btn-primary" type="submit" disabled="@_isBusy">Save branch</button>
+				@if (_editingBranchId is not null)
+				{
+					<button class="btn btn-outline-secondary" type="button" @onclick="ResetBranchForm">Cancel</button>
+				}
+			</div>
+		</EditForm>
+	</div>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+	<div class="card-body">
+		<h5 class="card-title">Branches</h5>
+		<div class="table-responsive">
+			<table class="table table-striped table-hover align-middle">
+				<thead><tr><th>Code</th><th>Name</th><th>Location</th><th>Contact</th><th>Status</th><th></th></tr></thead>
+				<tbody>
+					@foreach (var branch in _branches)
+					{
+						<tr>
+							<td>@branch.BranchCode</td>
+							<td>@branch.BranchName</td>
+							<td>@branch.City, @branch.Province</td>
+							<td>@branch.ContactNumber</td>
+							<td><span class="badge @(branch.IsActive ? "text-bg-success" : "text-bg-secondary")">@(branch.IsActive ? "Active" : "Inactive")</span></td>
+							<td class="text-end">
+								<button class="btn btn-sm btn-outline-primary me-2" @onclick="() => EditBranch(branch)">Edit</button>
+								<button class="btn btn-sm btn-outline-secondary" @onclick="() => SelectBranchAsync(branch.BranchId)">Services</button>
+							</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+	</div>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+	<div class="card-body">
+		<h5 class="card-title">Branch services</h5>
+		<div class="mb-3">
+			<label class="form-label">Branch</label>
+			<InputSelect class="form-select" @bind-Value="_selectedBranchId" @bind-Value:after="LoadBranchServicesAsync">
+				<option value="">Select branch</option>
+				@foreach (var branch in _branches)
+				{
+					<option value="@branch.BranchId">@branch.BranchName</option>
+				}
+			</InputSelect>
+		</div>
+
+		@if (Guid.TryParse(_selectedBranchId, out _))
+		{
+			<EditForm Model="_branchService" OnValidSubmit="SaveBranchServiceAsync">
+				<div class="row g-3 align-items-end mb-4">
+					<div class="col-md-5">
+						<label class="form-label">Service</label>
+						<InputSelect class="form-select" @bind-Value="_branchService.ServiceId" disabled="@(_editingBranchServiceId is not null)">
+							<option value="@Guid.Empty">Select service</option>
+							@foreach (var service in _availableServices)
+							{
+								<option value="@service.ServiceId">@service.ServiceName (@service.DurationMinutes mins)</option>
+							}
+						</InputSelect>
+					</div>
+					<div class="col-md-3">
+						<label class="form-label">Price</label>
+						<InputNumber class="form-control" @bind-Value="_branchService.Price" />
+					</div>
+					<div class="col-md-2 form-check mb-2">
+						<InputCheckbox class="form-check-input" @bind-Value="_branchService.IsActive" />
+						<label class="form-check-label">Active</label>
+					</div>
+					<div class="col-md-2 d-flex gap-2">
+						<button class="btn btn-primary" type="submit" disabled="@_isBusy">@(_editingBranchServiceId is null ? "Add" : "Update")</button>
+						@if (_editingBranchServiceId is not null)
+						{
+							<button class="btn btn-outline-secondary" type="button" @onclick="ResetBranchServiceForm">Cancel</button>
+						}
+					</div>
+				</div>
+			</EditForm>
+
+			<div class="table-responsive">
+				<table class="table table-striped table-hover align-middle">
+					<thead><tr><th>Service</th><th>Duration</th><th>Price</th><th>Status</th><th></th></tr></thead>
+					<tbody>
+						@foreach (var item in _branchServices)
+						{
+							<tr>
+								<td>@item.ServiceName</td>
+								<td>@item.DurationMinutes minutes</td>
+								<td>@item.Price.ToString("C")</td>
+								<td>@(item.IsActive ? "Active" : "Inactive")</td>
+								<td class="text-end"><button class="btn btn-sm btn-outline-primary" @onclick="() => EditBranchService(item)">Edit</button></td>
+							</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+		}
+	</div>
+</div>
+
+<div class="card border-0 shadow-sm">
+	<div class="card-body">
+		<h5 class="card-title">Appointment slots</h5>
+		<div class="row g-3 mb-3">
+			<div class="col-md-8">
+				<label class="form-label">Branch service</label>
+				<InputSelect class="form-select" @bind-Value="_selectedSlotBranchServiceId" @bind-Value:after="LoadAppointmentSlotsAsync">
+					<option value="">Select branch service</option>
+					@foreach (var item in _branchServices)
+					{
+						<option value="@item.BranchServiceId">@item.ServiceName</option>
+					}
+				</InputSelect>
+			</div>
+			<div class="col-md-4">
+				<label class="form-label">Slot date</label>
+				<InputDate class="form-control" @bind-Value="_slotDate" @bind-Value:after="LoadAppointmentSlotsAsync" />
+			</div>
+		</div>
+
+		@if (Guid.TryParse(_selectedSlotBranchServiceId, out _))
+		{
+			<EditForm Model="_appointmentSlot" OnValidSubmit="SaveAppointmentSlotAsync">
+				<div class="row g-3 align-items-end mb-4">
+					<div class="col-md-4">
+						<label class="form-label">Start time</label>
+						<InputDate class="form-control" Type="InputDateType.DateTimeLocal" @bind-Value="_appointmentSlot.StartDateTime" />
+					</div>
+					<div class="col-md-4">
+						<label class="form-label">End time</label>
+						<InputDate class="form-control" Type="InputDateType.DateTimeLocal" @bind-Value="_appointmentSlot.EndDateTime" />
+					</div>
+					<div class="col-md-2 form-check mb-2">
+						<InputCheckbox class="form-check-input" @bind-Value="_appointmentSlot.IsActive" />
+						<label class="form-check-label">Active</label>
+					</div>
+					<div class="col-md-2 d-flex gap-2">
+						<button class="btn btn-primary" type="submit" disabled="@_isBusy">@(_editingAppointmentSlotId is null ? "Add" : "Update")</button>
+						@if (_editingAppointmentSlotId is not null)
+						{
+							<button class="btn btn-outline-secondary" type="button" @onclick="ResetAppointmentSlotForm">Cancel</button>
+						}
+					</div>
+				</div>
+			</EditForm>
+
+			<div class="table-responsive">
+				<table class="table table-striped table-hover align-middle">
+					<thead><tr><th>Start</th><th>End</th><th>Status</th><th></th></tr></thead>
+					<tbody>
+						@foreach (var slot in _appointmentSlots)
+						{
+							<tr>
+								<td>@slot.StartDateTimeUtc.ToLocalTime().ToString("g")</td>
+								<td>@slot.EndDateTimeUtc.ToLocalTime().ToString("g")</td>
+								<td>@(slot.IsActive ? "Active" : "Inactive")</td>
+								<td class="text-end"><button class="btn btn-sm btn-outline-primary" @onclick="() => EditAppointmentSlot(slot)">Edit</button></td>
+							</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+		}
+	</div>
+</div>
+
+@code {
+	private List<BranchResponse> _branches = [];
+	private List<ServiceResponse> _availableServices = [];
+	private List<BranchServiceResponse> _branchServices = [];
+	private List<AppointmentSlotResponse> _appointmentSlots = [];
+	private BranchRequest _branch = new();
+	private CreateBranchServiceRequest _branchService = new();
+	private AppointmentSlotFormModel _appointmentSlot = CreateDefaultAppointmentSlot();
+	private Guid? _editingBranchId;
+	private Guid? _editingBranchServiceId;
+	private Guid? _editingAppointmentSlotId;
+	private string _selectedBranchId = string.Empty;
+	private string _selectedSlotBranchServiceId = string.Empty;
+	private DateTime _slotDate = DateTime.Today;
+	private string? _message;
+	private bool _hasError;
+	private bool _isBusy;
+
+	protected override async Task OnInitializedAsync()
+	{
+		await RunAsync(async () =>
+		{
+			_branches = await ApiClient.GetBranchesAsync(includeInactive: true);
+			_availableServices = await ApiClient.GetServicesAsync();
+		});
+	}
+
+	private async Task SaveBranchAsync()
+	{
+		await RunAsync(async () =>
+		{
+			if (_editingBranchId is { } branchId)
+			{
+				await ApiClient.UpdateBranchAsync(branchId, _branch);
+			}
+			else
+			{
+				await ApiClient.AddBranchAsync(_branch);
+			}
+
+			_branches = await ApiClient.GetBranchesAsync(includeInactive: true);
+			ResetBranchForm();
+			_message = "Branch saved successfully.";
+		});
+	}
+
+	private void EditBranch(BranchResponse branch)
+	{
+		_editingBranchId = branch.BranchId;
+		_branch = new BranchRequest
+		{
+			BranchCode = branch.BranchCode,
+			BranchName = branch.BranchName,
+			Address = branch.Address,
+			City = branch.City,
+			Province = branch.Province,
+			ContactNumber = branch.ContactNumber,
+			TimeZoneId = branch.TimeZoneId,
+			IsActive = branch.IsActive
+		};
+	}
+
+	private void ResetBranchForm()
+	{
+		_editingBranchId = null;
+		_branch = new BranchRequest();
+	}
+
+	private async Task SelectBranchAsync(Guid branchId)
+	{
+		_selectedBranchId = branchId.ToString();
+		await LoadBranchServicesAsync();
+	}
+
+	private async Task LoadBranchServicesAsync()
+	{
+		ResetBranchServiceForm();
+		_selectedSlotBranchServiceId = string.Empty;
+		_appointmentSlots = [];
+		if (!Guid.TryParse(_selectedBranchId, out var branchId))
+		{
+			_branchServices = [];
+			return;
+		}
+
+		await RunAsync(async () => _branchServices = await ApiClient.GetBranchServicesAsync(branchId));
+	}
+
+	private async Task SaveBranchServiceAsync()
+	{
+		if (!Guid.TryParse(_selectedBranchId, out var branchId) || _branchService.ServiceId == Guid.Empty)
+		{
+			_hasError = true;
+			_message = "Select a branch and service.";
+			return;
+		}
+
+		await RunAsync(async () =>
+		{
+			if (_editingBranchServiceId is { } branchServiceId)
+			{
+				await ApiClient.UpdateBranchServiceAsync(branchId, branchServiceId, new UpdateBranchServiceRequest
+				{
+					Price = _branchService.Price,
+					IsActive = _branchService.IsActive
+				});
+			}
+			else
+			{
+				await ApiClient.AddBranchServiceAsync(branchId, _branchService);
+			}
+
+			_branchServices = await ApiClient.GetBranchServicesAsync(branchId);
+			ResetBranchServiceForm();
+			_message = "Branch service saved successfully.";
+		});
+	}
+
+	private void EditBranchService(BranchServiceResponse branchService)
+	{
+		_editingBranchServiceId = branchService.BranchServiceId;
+		_branchService = new CreateBranchServiceRequest
+		{
+			ServiceId = branchService.ServiceId,
+			Price = branchService.Price,
+			IsActive = branchService.IsActive
+		};
+	}
+
+	private void ResetBranchServiceForm()
+	{
+		_editingBranchServiceId = null;
+		_branchService = new CreateBranchServiceRequest();
+	}
+
+	private async Task LoadAppointmentSlotsAsync()
+	{
+		ResetAppointmentSlotForm();
+		if (!Guid.TryParse(_selectedSlotBranchServiceId, out var branchServiceId))
+		{
+			_appointmentSlots = [];
+			return;
+		}
+
+		await RunAsync(async () => _appointmentSlots = await ApiClient.GetAvailableSlotsAsync(
+			branchServiceId,
+			DateOnly.FromDateTime(_slotDate)));
+	}
+
+	private async Task SaveAppointmentSlotAsync()
+	{
+		if (!Guid.TryParse(_selectedSlotBranchServiceId, out var branchServiceId))
+		{
+			_hasError = true;
+			_message = "Select a branch service.";
+			return;
+		}
+
+		if (_appointmentSlot.EndDateTime <= _appointmentSlot.StartDateTime)
+		{
+			_hasError = true;
+			_message = "The end time must be after the start time.";
+			return;
+		}
+
+		var startUtc = _appointmentSlot.StartDateTime.ToUniversalTime();
+		var endUtc = _appointmentSlot.EndDateTime.ToUniversalTime();
+		await RunAsync(async () =>
+		{
+			if (_editingAppointmentSlotId is { } slotId)
+			{
+				await ApiClient.UpdateAppointmentSlotAsync(slotId, new UpdateAppointmentSlotRequest
+				{
+					StartDateTimeUtc = startUtc,
+					EndDateTimeUtc = endUtc,
+					IsActive = _appointmentSlot.IsActive
+				});
+			}
+			else
+			{
+				await ApiClient.AddAppointmentSlotAsync(new CreateAppointmentSlotRequest
+				{
+					BranchServiceId = branchServiceId,
+					StartDateTimeUtc = startUtc,
+					EndDateTimeUtc = endUtc,
+					IsActive = _appointmentSlot.IsActive
+				});
+			}
+
+			_slotDate = _appointmentSlot.StartDateTime.Date;
+			_appointmentSlots = await ApiClient.GetAvailableSlotsAsync(branchServiceId, DateOnly.FromDateTime(_slotDate));
+			ResetAppointmentSlotForm();
+			_message = "Appointment slot saved successfully.";
+		});
+	}
+
+	private void EditAppointmentSlot(AppointmentSlotResponse slot)
+	{
+		_editingAppointmentSlotId = slot.AppointmentSlotId;
+		_appointmentSlot = new AppointmentSlotFormModel
+		{
+			StartDateTime = slot.StartDateTimeUtc.ToLocalTime(),
+			EndDateTime = slot.EndDateTimeUtc.ToLocalTime(),
+			IsActive = slot.IsActive
+		};
+	}
+
+	private void ResetAppointmentSlotForm()
+	{
+		_editingAppointmentSlotId = null;
+		_appointmentSlot = CreateDefaultAppointmentSlot(_slotDate);
+	}
+
+	private static AppointmentSlotFormModel CreateDefaultAppointmentSlot(DateTime? date = null)
+	{
+		var start = (date ?? DateTime.Today).Date.AddHours(9);
+		return new AppointmentSlotFormModel
+		{
+			StartDateTime = start,
+			EndDateTime = start.AddMinutes(30),
+			IsActive = true
+		};
+	}
+
+	private async Task RunAsync(Func<Task> action)
+	{
+		_isBusy = true;
+		_message = null;
+		_hasError = false;
+		try
+		{
+			await action();
+		}
+		catch (Exception ex)
+		{
+			_hasError = true;
+			_message = $"Operation failed: {ex.Message}";
+		}
+		finally
+		{
+			_isBusy = false;
+		}
+	}
+
+	private sealed class AppointmentSlotFormModel
+	{
+		public DateTime StartDateTime { get; set; }
+		public DateTime EndDateTime { get; set; }
+		public bool IsActive { get; set; } = true;
+	}
+}

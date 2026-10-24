@@ -65,10 +65,9 @@ namespace BookingSystem_Explore.BusinessLibrary.Services
             var occupied = await _appointmentRepository.IsSlotOccupiedAsync(slot.AppointmentSlotId, cancellationToken);
             if (occupied) throw new InvalidOperationException("Slot already occupied");
 
-            if (!_phoneEncryptionService.TryDecrypt(request.Customer.PhoneNumber, out var decryptedPhone))
-            {
-                throw new InvalidOperationException("PhoneNumber must be encrypted.");
-            }
+            var phoneNumber = _phoneEncryptionService.TryDecrypt(request.Customer.PhoneNumber, out var decryptedPhone)
+                ? decryptedPhone
+                : request.Customer.PhoneNumber;
 
             // create customer
             var customer = new Customer
@@ -77,7 +76,7 @@ namespace BookingSystem_Explore.BusinessLibrary.Services
                 FirstName = request.Customer.FirstName,
                 LastName = request.Customer.LastName,
                 EmailAddress = request.Customer.EmailAddress,
-                PhoneNumber = _phoneEncryptionService.Encrypt(decryptedPhone),
+                PhoneNumber = _phoneEncryptionService.Encrypt(phoneNumber),
                 CreatedDate = DateTime.UtcNow
             };
             await _customerRepository.AddAsync(customer, cancellationToken);

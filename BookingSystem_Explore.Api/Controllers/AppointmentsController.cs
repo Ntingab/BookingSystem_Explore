@@ -19,7 +19,7 @@ public class AppointmentsController : ControllerBase
         _appointmentService = appointmentService;
     }
 
-        // Extract management token from standard Authorization header (Bearer) or fallback to X-Management-Token
+        // Management tokens are separate from API access bearer tokens.
         private bool TryGetManagementToken(out string? token)
         {
             token = null;
@@ -28,16 +28,6 @@ public class AppointmentsController : ControllerBase
             {
                 token = vals.First();
                 return true;
-            }
-
-            if (Request.Headers.TryGetValue("Authorization", out var authVals))
-            {
-                var auth = authVals.FirstOrDefault();
-                if (!string.IsNullOrEmpty(auth) && auth.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
-                {
-                    token = auth.Substring("Bearer ".Length).Trim();
-                    if (!string.IsNullOrEmpty(token)) return true;
-                }
             }
 
             return false;

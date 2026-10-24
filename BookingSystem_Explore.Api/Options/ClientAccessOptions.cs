@@ -10,7 +10,6 @@ namespace BookingSystem_Explore.Api.Options
     public class ClientDefinition
     {
         public string ClientId { get; set; } = string.Empty;
-        public string ClientSecret { get; set; } = string.Empty;
         public string[] Scopes { get; set; } = [];
         public string[] AllowedCertificateThumbprints { get; set; } = [];
         public ClientRateLimitOptions RateLimit { get; set; } = new();

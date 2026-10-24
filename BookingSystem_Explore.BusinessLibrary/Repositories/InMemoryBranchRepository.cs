@@ -12,9 +12,9 @@ namespace BookingSystem_Explore.BusinessLibrary.Repositories
             _store = store;
         }
 
-        public Task<IReadOnlyList<Branch>> GetActiveBranchesAsync(CancellationToken cancellationToken)
+        public Task<IReadOnlyList<Branch>> GetBranchesAsync(bool includeInactive, CancellationToken cancellationToken)
         {
-            var list = _store.Branches.Where(b => b.IsActive).ToList();
+            var list = _store.Branches.Where(b => includeInactive || b.IsActive).ToList();
             return Task.FromResult((IReadOnlyList<Branch>)list);
         }
 
@@ -22,6 +22,23 @@ namespace BookingSystem_Explore.BusinessLibrary.Repositories
         {
             var b = _store.Branches.FirstOrDefault(x => x.BranchId == branchId);
             return Task.FromResult(b);
+        }
+
+        public Task AddAsync(Branch branch, CancellationToken cancellationToken)
+        {
+            _store.Branches.Add(branch);
+            return Task.CompletedTask;
+        }
+
+        public Task UpdateAsync(Branch branch, CancellationToken cancellationToken)
+        {
+            var index = _store.Branches.FindIndex(b => b.BranchId == branch.BranchId);
+            if (index >= 0)
+            {
+                _store.Branches[index] = branch;
+            }
+
+            return Task.CompletedTask;
         }
 
         public Task<IReadOnlyList<BranchService>> GetBranchServicesAsync(Guid branchId, CancellationToken cancellationToken)

@@ -20,9 +20,9 @@ public class BranchesController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<BranchResponse>>> GetBranchesAsync(CancellationToken cancellationToken)
+    public async Task<ActionResult<IReadOnlyList<BranchResponse>>> GetBranchesAsync(CancellationToken cancellationToken, [FromQuery] bool includeInactive = false)
     {
-        var res = await _branchService.GetBranchesAsync(cancellationToken);
+        var res = await _branchService.GetBranchesAsync(cancellationToken, includeInactive);
         return Ok(res);
     }
 
@@ -32,6 +32,21 @@ public class BranchesController : ControllerBase
         var res = await _branchService.GetBranchByIdAsync(id, cancellationToken);
         if (res == null) return NotFound();
         return Ok(res);
+    }
+
+    [HttpPost]
+    public async Task<ActionResult<BranchResponse>> AddBranchAsync([FromBody] CreateBranchRequest request, CancellationToken cancellationToken)
+    {
+        var created = await _branchService.AddBranchAsync(request, cancellationToken);
+        var version = HttpContext.Request.RouteValues["version"]?.ToString() ?? "1";
+        return CreatedAtAction(nameof(GetBranchByIdAsync), new { id = created.BranchId, version }, created);
+    }
+
+    [HttpPut("{id:guid}")]
+    public async Task<ActionResult<BranchResponse>> UpdateBranchAsync(Guid id, [FromBody] UpdateBranchRequest request, CancellationToken cancellationToken)
+    {
+        var updated = await _branchService.UpdateBranchAsync(id, request, cancellationToken);
+        return updated is null ? NotFound() : Ok(updated);
     }
 
     [HttpGet("{id:guid}/services")]

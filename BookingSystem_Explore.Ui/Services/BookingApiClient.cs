@@ -1,5 +1,5 @@
 using BookingSystem_Explore.Ui.Models;
-using System.Text;
+using System.Net.Http.Json;
 using System.Text.Json;
 
 namespace BookingSystem_Explore.Ui.Services;
@@ -9,20 +9,35 @@ public class BookingApiClient
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private readonly HttpClient _httpClient;
     private readonly ApiClientSettings _settings;
-    private readonly PhoneEncryptionClient _phoneEncryptionClient;
-    private readonly JwtTokenClient _jwtTokenClient;
+    private readonly ApiAccessTokenClient _accessTokenClient;
 
-    public BookingApiClient(HttpClient httpClient, ApiClientSettings settings, PhoneEncryptionClient phoneEncryptionClient, JwtTokenClient jwtTokenClient)
+    public BookingApiClient(HttpClient httpClient, ApiClientSettings settings, ApiAccessTokenClient accessTokenClient)
     {
         _httpClient = httpClient;
         _settings = settings;
-        _phoneEncryptionClient = phoneEncryptionClient;
-        _jwtTokenClient = jwtTokenClient;
+        _accessTokenClient = accessTokenClient;
     }
 
-    public async Task<List<BranchResponse>> GetBranchesAsync(CancellationToken cancellationToken = default)
+    public async Task<List<ServiceResponse>> GetServicesAsync(CancellationToken cancellationToken = default)
     {
-        return await GetAsync<List<BranchResponse>>("api/v1/branches", cancellationToken) ?? [];
+        return await GetAsync<List<ServiceResponse>>("api/v1/services", cancellationToken) ?? [];
+    }
+
+    public Task<BranchResponse> AddBranchAsync(BranchRequest request, CancellationToken cancellationToken = default)
+        => SendAsync<BranchResponse>(HttpMethod.Post, "api/v1/branches", request, cancellationToken);
+
+    public Task<BranchResponse> UpdateBranchAsync(Guid branchId, BranchRequest request, CancellationToken cancellationToken = default)
+        => SendAsync<BranchResponse>(HttpMethod.Put, $"api/v1/branches/{branchId}", request, cancellationToken);
+
+    public Task<BranchServiceResponse> AddBranchServiceAsync(Guid branchId, CreateBranchServiceRequest request, CancellationToken cancellationToken = default)
+        => SendAsync<BranchServiceResponse>(HttpMethod.Post, $"api/v1/branches/{branchId}/services", request, cancellationToken);
+
+    public Task<BranchServiceResponse> UpdateBranchServiceAsync(Guid branchId, Guid branchServiceId, UpdateBranchServiceRequest request, CancellationToken cancellationToken = default)
+        => SendAsync<BranchServiceResponse>(HttpMethod.Put, $"api/v1/branches/{branchId}/services/{branchServiceId}", request, cancellationToken);
+
+    public async Task<List<BranchResponse>> GetBranchesAsync(bool includeInactive = false, CancellationToken cancellationToken = default)
+    {
+        return await GetAsync<List<BranchResponse>>($"api/v1/branches?includeInactive={includeInactive}", cancellationToken) ?? [];
     }
 
     public async Task<List<BranchServiceResponse>> GetBranchServicesAsync(Guid branchId, CancellationToken cancellationToken = default)
@@ -35,41 +50,41 @@ public class BookingApiClient
         return await GetAsync<List<AppointmentSlotResponse>>($"api/v1/appointment-slots?branchServiceId={branchServiceId}&date={date:yyyy-MM-dd}", cancellationToken) ?? [];
     }
 
-    public async Task<AppointmentCreatedResponse> BookAppointmentAsync(CreateAppointmentRequest request, CancellationToken cancellationToken = default)
-    {
-        request.Customer.PhoneNumber = _phoneEncryptionClient.Encrypt(request.Customer.PhoneNumber);
-        var requestJson = JsonSerializer.Serialize(request, JsonOptions);
-        using var content = new StringContent(requestJson, Encoding.UTF8, "application/json");
+    public Task<AppointmentSlotResponse> AddAppointmentSlotAsync(CreateAppointmentSlotRequest request, CancellationToken cancellationToken = default)
+        => SendAsync<AppointmentSlotResponse>(HttpMethod.Post, "api/v1/appointment-slots", request, cancellationToken);
 
-        using var message = CreateRequest(HttpMethod.Post, "api/v1/appointments", "write");
-        message.Content = content;
-        var response = await _httpClient.SendAsync(message, cancellationToken);
-        response.EnsureSuccessStatusCode();
+    public Task<AppointmentSlotResponse> UpdateAppointmentSlotAsync(Guid appointmentSlotId, UpdateAppointmentSlotRequest request, CancellationToken cancellationToken = default)
+        => SendAsync<AppointmentSlotResponse>(HttpMethod.Put, $"api/v1/appointment-slots/{appointmentSlotId}", request, cancellationToken);
 
-        var payload = await DeserializeResponseAsync<AppointmentCreatedResponse>(response, cancellationToken);
-        if (payload is null)
-        {
-            throw new InvalidOperationException("API returned an empty booking response.");
-        }
-
-        return payload;
-    }
+    public Task<AppointmentCreatedResponse> BookAppointmentAsync(CreateAppointmentRequest request, CancellationToken cancellationToken = default)
+        => SendAsync<AppointmentCreatedResponse>(HttpMethod.Post, "api/v1/appointments", request, cancellationToken);
 
     private async Task<T?> GetAsync<T>(string route, CancellationToken cancellationToken)
     {
-        using var message = CreateRequest(HttpMethod.Get, route, "read");
-        var response = await _httpClient.SendAsync(message, cancellationToken);
+        using var message = await CreateRequestAsync(HttpMethod.Get, route, cancellationToken);
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
         response.EnsureSuccessStatusCode();
         return await DeserializeResponseAsync<T>(response, cancellationToken);
     }
 
-    private HttpRequestMessage CreateRequest(HttpMethod method, string route, string scope)
+    private async Task<T> SendAsync<T>(HttpMethod method, string route, object request, CancellationToken cancellationToken)
+    {
+        using var message = await CreateRequestAsync(method, route, cancellationToken);
+        message.Content = JsonContent.Create(request);
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        return await DeserializeResponseAsync<T>(response, cancellationToken)
+            ?? throw new InvalidOperationException("API returned an empty response.");
+    }
+
+    private async Task<HttpRequestMessage> CreateRequestAsync(HttpMethod method, string route, CancellationToken cancellationToken)
     {
         var message = new HttpRequestMessage(method, route);
         message.Headers.Add("X-Client-Id", _settings.ClientId);
-        message.Headers.Add("X-Client-Secret", _settings.ClientSecret);
         message.Headers.Add("X-Session-Id", Guid.NewGuid().ToString("N"));
-        message.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _jwtTokenClient.CreateToken(scope));
+        message.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue(
+            "Bearer",
+            await _accessTokenClient.GetTokenAsync(cancellationToken));
         return message;
     }
 

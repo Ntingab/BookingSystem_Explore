@@ -17,7 +17,6 @@
       <PackageReference Include="Swashbuckle.AspNetCore.SwaggerGen" Version="10.3.0" />
       <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="10.3.0" />
       <PackageReference Include="Microsoft.OpenApi" Version="2.12.2" />
-      <PackageReference Include="HttpCertificateHelper" Version="1.3.69" />
       <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.16.0" />
       <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
       <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
@@ -30,6 +29,10 @@
     <ProjectReference Include="C:\\Work\\BookingSystem_Explore\\BookingSystem_Explore.BusinessLibrary\\BookingSystem_Explore.BusinessLibrary.csproj" />
     <ProjectReference Include="C:\\Work\\BookingSystem_Explore\\BookingSystem_Explore.Infrastructure\\BookingSystem_Explore.Infrastructure.csproj" />
     <ProjectReference Include="..\BookingSystem_Explore.Infrastructure\BookingSystem_Explore.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Services\" />
   </ItemGroup>
 
 </Project>

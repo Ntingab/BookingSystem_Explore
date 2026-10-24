@@ -74,8 +74,10 @@ namespace BookingSystem_Explore.BusinessLibrary.Services
             return new AppointmentSlotResponse
             {
                 AppointmentSlotId = slot.AppointmentSlotId,
+                BranchServiceId = slot.BranchServiceId,
                 StartDateTimeUtc = slot.StartDateTimeUtc,
-                EndDateTimeUtc = slot.EndDateTimeUtc
+                EndDateTimeUtc = slot.EndDateTimeUtc,
+                IsActive = slot.IsActive
             };
         }
 
@@ -95,8 +97,10 @@ namespace BookingSystem_Explore.BusinessLibrary.Services
             return new AppointmentSlotResponse
             {
                 AppointmentSlotId = existing.AppointmentSlotId,
+                BranchServiceId = existing.BranchServiceId,
                 StartDateTimeUtc = existing.StartDateTimeUtc,
-                EndDateTimeUtc = existing.EndDateTimeUtc
+                EndDateTimeUtc = existing.EndDateTimeUtc,
+                IsActive = existing.IsActive
             };
         }
 
@@ -105,8 +109,10 @@ namespace BookingSystem_Explore.BusinessLibrary.Services
             return new AppointmentSlotResponse
             {
                 AppointmentSlotId = slot.AppointmentSlotId,
+                BranchServiceId = slot.BranchServiceId,
                 StartDateTimeUtc = slot.StartDateTimeUtc,
-                EndDateTimeUtc = slot.EndDateTimeUtc
+                EndDateTimeUtc = slot.EndDateTimeUtc,
+                IsActive = slot.IsActive
             };
         }
     }

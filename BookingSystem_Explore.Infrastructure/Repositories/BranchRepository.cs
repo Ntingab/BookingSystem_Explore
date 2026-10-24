@@ -13,9 +13,10 @@ namespace BookingSystem_Explore.Infrastructure.Repositories
             _db = db;
         }
 
-        public async Task<IReadOnlyList<Branch>> GetActiveBranchesAsync(CancellationToken cancellationToken)
+        public async Task<IReadOnlyList<Branch>> GetBranchesAsync(bool includeInactive, CancellationToken cancellationToken)
         {
-            return await _db.Branches.AsNoTracking().Where(b => b.IsActive).ToListAsync(cancellationToken);
+            var query = _db.Branches.AsNoTracking();
+            return await (includeInactive ? query : query.Where(b => b.IsActive)).ToListAsync(cancellationToken);
         }
 
         public async Task<Branch?> GetByIdAsync(Guid branchId, CancellationToken cancellationToken)
@@ -23,6 +24,16 @@ namespace BookingSystem_Explore.Infrastructure.Repositories
             return await _db.Branches.AsNoTracking().FirstOrDefaultAsync(b => b.BranchId == branchId, cancellationToken);
         }
 
+        public async Task AddAsync(Branch branch, CancellationToken cancellationToken)
+        {
+            await _db.Branches.AddAsync(branch, cancellationToken);
+        }
+
+        public Task UpdateAsync(Branch branch, CancellationToken cancellationToken)
+        {
+            _db.Branches.Update(branch);
+            return Task.CompletedTask;
+        }
 
         public async Task<IReadOnlyList<BranchService>> GetBranchServicesAsync(Guid branchId, CancellationToken cancellationToken)
         {

@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Server.Kestrel.Https;
 using BookingSystem_Explore.Infrastructure.Constants;
 using Serilog;
+using System.Security.Cryptography;
 
 namespace BookingSystem_Explore.Api
 {
@@ -16,6 +17,8 @@ namespace BookingSystem_Explore.Api
         {
             var builder = WebApplication.CreateBuilder(args);
             var configuration = builder.Configuration;
+
+            ConfigureDevelopmentSecrets(builder);
 
             // Disable strict DI validation at build time to avoid runtime type resolution issues
             builder.Host.UseDefaultServiceProvider(options =>
@@ -51,10 +54,11 @@ namespace BookingSystem_Explore.Api
                     {
                         policy.WithOrigins(corsOptions.AllowedOrigins).AllowAnyHeader().AllowAnyMethod();
                     }
-                    else
+                    else if (builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("IntegrationTests"))
                     {
-                        // development fallback
-                        policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
+                        policy.WithOrigins("https://localhost:5001", "https://localhost:7025")
+                            .AllowAnyHeader()
+                            .AllowAnyMethod();
                     }
                 });
             });
@@ -90,20 +94,12 @@ namespace BookingSystem_Explore.Api
 
             // Rate limiting (per-IP token bucket) to mitigate abuse and brute-force attacks.
             var configuredRateLimit = configuration.GetSection("RateLimiter").Get<Options.RateLimiterOptions>() ?? new Options.RateLimiterOptions();
-            var configuredClientAccess = configuration.GetSection("ClientAccess").Get<Options.ClientAccessOptions>() ?? new Options.ClientAccessOptions();
 
             builder.Services.AddRateLimiter(options =>
             {
                 options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
                 {
-                    var clientId = httpContext.Request.Headers.TryGetValue("X-Client-Id", out var clientValues)
-                        ? clientValues.FirstOrDefault()
-                        : null;
-
-                    var client = configuredClientAccess.Clients.FirstOrDefault(c =>
-                        string.Equals(c.ClientId, clientId, StringComparison.Ordinal));
-
-                    var effectiveLimit = client?.RateLimit ?? new Options.ClientRateLimitOptions
+                    var effectiveLimit = new Options.ClientRateLimitOptions
                     {
                         TokenLimit = configuredRateLimit.TokenLimit,
                         TokensPerPeriod = configuredRateLimit.TokensPerPeriod,
@@ -111,9 +107,7 @@ namespace BookingSystem_Explore.Api
                         QueueLimit = configuredRateLimit.QueueLimit
                     };
 
-                    var partitionKey = !string.IsNullOrWhiteSpace(clientId)
-                        ? $"client:{clientId}"
-                        : httpContext.Connection.RemoteIpAddress?.ToString() ?? "global";
+                    var partitionKey = httpContext.Connection.RemoteIpAddress?.ToString() ?? "global";
 
                     return RateLimitPartition.GetTokenBucketLimiter(
                         partitionKey,
@@ -148,26 +142,30 @@ namespace BookingSystem_Explore.Api
             // Apply CORS before client access checks so browser preflight gets CORS headers.
             app.UseCors("DefaultCors");
 
+            app.UseRateLimiter();
+
             app.UseMiddleware<BookingSystem_Explore.Api.Middleware.ClientAccessMiddleware>();
 
             // Security headers: simple Content-Security-Policy; customize per requirements
             app.Use(async (context, next) =>
             {
-                context.Response.Headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'";
+                context.Response.Headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'; base-uri 'none'";
+                context.Response.Headers["X-Content-Type-Options"] = "nosniff";
+                context.Response.Headers["Referrer-Policy"] = "no-referrer";
                 await next();
             });
 
             // Configure the HTTP request pipeline.
-            app.UseSwagger();
-            app.UseSwaggerUI(c =>
+            if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("IntegrationTests"))
             {
-                c.SwaggerEndpoint($"/swagger/v{Versions.Version1}/swagger.json", "BookingSystem Explore API v1");
-                c.DocumentTitle = "BookingSystem Explore API";
-                c.RoutePrefix = string.Empty; // serve Swagger UI at application root
-            });
-
-            // Use rate limiter middleware globally
-            app.UseRateLimiter();
+                app.UseSwagger();
+                app.UseSwaggerUI(c =>
+                {
+                    c.SwaggerEndpoint($"/swagger/v{Versions.Version1}/swagger.json", "BookingSystem Explore API v1");
+                    c.DocumentTitle = "BookingSystem Explore API";
+                    c.RoutePrefix = string.Empty;
+                });
+            }
 
             // Expose health endpoints for probes
             app.MapHealthChecks("/health");         // general health
@@ -180,6 +178,25 @@ namespace BookingSystem_Explore.Api
             app.MapControllers();
 
             await app.RunAsync();
+        }
+
+        private static void ConfigureDevelopmentSecrets(WebApplicationBuilder builder)
+        {
+            var signingKey = builder.Configuration["ClientAccess:Jwt:SigningKey"];
+            var phoneKey = builder.Configuration["Security:PhoneEncryption:Key"];
+            var mayUseEphemeralSecrets = builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("IntegrationTests");
+
+            if (string.IsNullOrWhiteSpace(signingKey))
+            {
+                if (!mayUseEphemeralSecrets) throw new InvalidOperationException("ClientAccess:Jwt:SigningKey must be supplied by a secure configuration provider.");
+                builder.Configuration["ClientAccess:Jwt:SigningKey"] = Convert.ToBase64String(RandomNumberGenerator.GetBytes(48));
+            }
+
+            if (string.IsNullOrWhiteSpace(phoneKey))
+            {
+                if (!mayUseEphemeralSecrets) throw new InvalidOperationException("Security:PhoneEncryption:Key must be supplied by a secure configuration provider.");
+                builder.Configuration["Security:PhoneEncryption:Key"] = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+            }
         }
     }
 }

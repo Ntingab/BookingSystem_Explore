@@ -26,7 +26,8 @@ public class ClientAccessMiddleware
             return;
         }
 
-        if (!context.Request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase))
+        if (!context.Request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase) ||
+            context.Request.Path.Equals("/api/v1/auth/token", StringComparison.OrdinalIgnoreCase))
         {
             await _next(context);
             return;
@@ -42,19 +43,19 @@ public class ClientAccessMiddleware
         context.TraceIdentifier = sessionId!;
         context.Response.Headers["X-Session-Id"] = sessionId;
 
-        if (!TryGetClientHeaders(context, out var clientId, out var clientSecret))
+        if (!TryGetClientId(context, out var clientId))
         {
             context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            await context.Response.WriteAsync("Missing required client authentication headers.");
+            await context.Response.WriteAsync("Missing required client identifier.");
             return;
         }
 
         var configuredClients = options.CurrentValue.Clients;
         var client = configuredClients.FirstOrDefault(c => string.Equals(c.ClientId, clientId, StringComparison.Ordinal));
-        if (client == null || !string.Equals(client.ClientSecret, clientSecret, StringComparison.Ordinal))
+        if (client == null)
         {
             context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            await context.Response.WriteAsync("Invalid client credentials.");
+            await context.Response.WriteAsync("Invalid client identifier.");
             return;
         }
 
@@ -77,9 +78,9 @@ public class ClientAccessMiddleware
             }
         }
 
-        var requiredScope = IsReadRequest(context.Request.Method) ? "read" : "write";
+        var requiredScope = GetRequiredScope(context.Request);
         var clientAllowedScopes = client.Scopes.Select(s => s.ToLowerInvariant()).ToHashSet();
-        var tokenScopes = ValidateAndGetJwtScopes(context, options.CurrentValue.Jwt);
+        var tokenScopes = ValidateAndGetJwtScopes(context, options.CurrentValue.Jwt, clientId!);
 
         if (tokenScopes.Count == 0)
         {
@@ -118,23 +119,20 @@ public class ClientAccessMiddleware
         return !string.IsNullOrWhiteSpace(sessionId);
     }
 
-    private static bool TryGetClientHeaders(HttpContext context, out string? clientId, out string? clientSecret)
+    private static bool TryGetClientId(HttpContext context, out string? clientId)
     {
         clientId = null;
-        clientSecret = null;
 
-        if (!context.Request.Headers.TryGetValue("X-Client-Id", out var idValues) || !context.Request.Headers.TryGetValue("X-Client-Secret", out var secretValues))
+        if (!context.Request.Headers.TryGetValue("X-Client-Id", out var idValues))
         {
             return false;
         }
 
         clientId = idValues.FirstOrDefault();
-        clientSecret = secretValues.FirstOrDefault();
-
-        return !string.IsNullOrWhiteSpace(clientId) && !string.IsNullOrWhiteSpace(clientSecret);
+        return !string.IsNullOrWhiteSpace(clientId);
     }
 
-    private static HashSet<string> ValidateAndGetJwtScopes(HttpContext context, JwtClientOptions jwtOptions)
+    private static HashSet<string> ValidateAndGetJwtScopes(HttpContext context, JwtClientOptions jwtOptions, string clientId)
     {
         if (!context.Request.Headers.TryGetValue("Authorization", out var authValues))
         {
@@ -164,9 +162,15 @@ public class ClientAccessMiddleware
                 ValidAudience = jwtOptions.Audience,
                 ValidateIssuerSigningKey = true,
                 IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.SigningKey)),
+                ValidAlgorithms = [SecurityAlgorithms.HmacSha256],
                 ValidateLifetime = true,
                 ClockSkew = TimeSpan.FromMinutes(1)
             }, out _);
+
+            if (!string.Equals(principal.FindFirstValue("client_id"), clientId, StringComparison.Ordinal))
+            {
+                return new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            }
 
             return ExtractScopes(principal);
         }
@@ -192,8 +196,17 @@ public class ClientAccessMiddleware
         return scopes;
     }
 
-    private static bool IsReadRequest(string method)
+    private static string GetRequiredScope(HttpRequest request)
     {
-        return HttpMethods.IsGet(method) || HttpMethods.IsHead(method) || HttpMethods.IsOptions(method);
+        if (HttpMethods.IsGet(request.Method) || HttpMethods.IsHead(request.Method) || HttpMethods.IsOptions(request.Method))
+        {
+            return "read";
+        }
+
+        return HttpMethods.IsPost(request.Method) && request.Path.Equals("/api/v1/appointments", StringComparison.OrdinalIgnoreCase)
+            ? "booking:create"
+            : HttpMethods.IsPatch(request.Method) && request.Path.StartsWithSegments("/api/v1/appointments", StringComparison.OrdinalIgnoreCase)
+                ? "booking:manage"
+                : "admin";
     }
 }

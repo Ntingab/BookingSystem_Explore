@@ -29,6 +29,58 @@ namespace BookingSystem_Explore.Tests
         }
 
         [Fact]
+        public async Task BranchesController_AddAndUpdateBranchAndService_Works()
+        {
+            var store = new InMemoryDataStore();
+            var branchService = new BranchService(new InMemoryBranchRepository(store), new InMemoryUnitOfWork());
+            var controller = new BranchesController(branchService)
+            {
+                ControllerContext = new ControllerContext { HttpContext = new Microsoft.AspNetCore.Http.DefaultHttpContext() }
+            };
+
+            var createdResult = await controller.AddBranchAsync(new CreateBranchRequest
+            {
+                BranchCode = "TEST",
+                BranchName = "Test Branch",
+                Address = "1 Test Street",
+                City = "Johannesburg",
+                Province = "Gauteng",
+                ContactNumber = "0110000000",
+                TimeZoneId = "Africa/Johannesburg"
+            }, CancellationToken.None);
+            var created = Assert.IsType<BranchResponse>(Assert.IsType<CreatedAtActionResult>(createdResult.Result).Value);
+
+            var updatedResult = await controller.UpdateBranchAsync(created.BranchId, new UpdateBranchRequest
+            {
+                BranchCode = "TEST",
+                BranchName = "Updated Test Branch",
+                Address = "2 Test Street",
+                City = "Johannesburg",
+                Province = "Gauteng",
+                ContactNumber = "0110000001",
+                TimeZoneId = "Africa/Johannesburg",
+                IsActive = true
+            }, CancellationToken.None);
+            var updated = Assert.IsType<BranchResponse>(Assert.IsType<OkObjectResult>(updatedResult.Result).Value);
+            Assert.Equal("Updated Test Branch", updated.BranchName);
+
+            var serviceResult = await controller.AddBranchServiceAsync(created.BranchId, new CreateBranchServiceRequest
+            {
+                ServiceId = store.Services[0].ServiceId,
+                Price = 150m
+            }, CancellationToken.None);
+            var branchServiceResponse = Assert.IsType<BranchServiceResponse>(Assert.IsType<CreatedAtActionResult>(serviceResult.Result).Value);
+
+            var updatedServiceResult = await controller.UpdateBranchServiceAsync(created.BranchId, branchServiceResponse.BranchServiceId, new UpdateBranchServiceRequest
+            {
+                Price = 175m,
+                IsActive = true
+            }, CancellationToken.None);
+            var updatedService = Assert.IsType<BranchServiceResponse>(Assert.IsType<OkObjectResult>(updatedServiceResult.Result).Value);
+            Assert.Equal(175m, updatedService.Price);
+        }
+
+        [Fact]
         public async Task ServicesController_GetServices_ReturnsDistinct()
         {
             var store = new InMemoryDataStore();

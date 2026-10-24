@@ -30,18 +30,21 @@ public class ExceptionHandlingMiddleware
     private static Task HandleExceptionAsync(HttpContext context, Exception exception)
     {
         int status = 500;
-        string? detail = exception.Message;
+        string? detail;
 
         switch (exception)
         {
             case BookingSystem_Explore.BusinessLibrary.Exceptions.UnauthorizedAppointmentAccessException:
                 status = StatusCodes.Status401Unauthorized;
+                detail = exception.Message;
                 break;
             case BookingSystem_Explore.BusinessLibrary.Exceptions.NotFoundException:
                 status = StatusCodes.Status404NotFound;
+                detail = exception.Message;
                 break;
             default:
                 status = StatusCodes.Status500InternalServerError;
+                detail = "An unexpected error occurred.";
                 break;
         }
 

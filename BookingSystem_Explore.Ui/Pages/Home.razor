@@ -47,7 +47,7 @@
 
 					<div class="mb-3">
 						<label class="form-label">Branch</label>
-						<InputSelect class="form-select form-select-lg" @bind-Value="_selectedBranchId" @onchange="OnBranchChangedAsync">
+						<InputSelect class="form-select form-select-lg" @bind-Value="_selectedBranchId" @bind-Value:after="OnBranchChangedAsync">
 							<option value="">Select branch</option>
 							@foreach (var branch in _branches)
 							{
@@ -58,7 +58,7 @@
 
 					<div class="mb-3">
 						<label class="form-label">Service</label>
-						<InputSelect class="form-select form-select-lg" @bind-Value="_selectedBranchServiceId" @onchange="OnBranchServiceChangedAsync">
+						<InputSelect class="form-select form-select-lg" @bind-Value="_selectedBranchServiceId" @bind-Value:after="OnBranchServiceChangedAsync">
 							<option value="">Select service</option>
 							@foreach (var service in _services)
 							{
@@ -71,7 +71,7 @@
 					<div class="row g-3 align-items-end mb-3">
 						<div class="col-md-6">
 						<label class="form-label">Date</label>
-						<InputDate class="form-control form-control-lg" @bind-Value="_appointmentDate" @onchange="OnDateChangedAsync" />
+						<InputDate class="form-control form-control-lg" @bind-Value="_appointmentDate" @bind-Value:after="OnDateChangedAsync" />
 						</div>
 						<div class="col-md-6">
 							<button type="button" class="btn btn-outline-primary w-100 btn-lg" @onclick="LoadSlotsAsync">
@@ -187,7 +187,7 @@
 		_branches = await ApiClient.GetBranchesAsync();
 	}
 
-	private async Task OnBranchChangedAsync(ChangeEventArgs _)
+	private async Task OnBranchChangedAsync()
 	{
 		_services = [];
 		_slots = [];
@@ -210,7 +210,7 @@
 		}
 	}
 
-	private async Task OnBranchServiceChangedAsync(ChangeEventArgs _)
+	private async Task OnBranchServiceChangedAsync()
 	{
 		if (!string.IsNullOrWhiteSpace(_selectedBranchServiceId))
 		{
@@ -218,7 +218,7 @@
 		}
 	}
 
-	private async Task OnDateChangedAsync(ChangeEventArgs _)
+	private async Task OnDateChangedAsync()
 	{
 		if (!string.IsNullOrWhiteSpace(_selectedBranchServiceId))
 		{

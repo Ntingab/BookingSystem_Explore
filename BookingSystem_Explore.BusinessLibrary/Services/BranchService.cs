@@ -16,29 +16,46 @@ namespace BookingSystem_Explore.BusinessLibrary.Services
             _unitOfWork = unitOfWork;
         }
 
-        public async Task<IReadOnlyList<BranchResponse>> GetBranchesAsync(CancellationToken cancellationToken)
+        public async Task<IReadOnlyList<BranchResponse>> GetBranchesAsync(CancellationToken cancellationToken, bool includeInactive = false)
         {
-            var branches = await _branchRepository.GetActiveBranchesAsync(cancellationToken);
-            return branches.Select(b => new BranchResponse
-            {
-                BranchId = b.BranchId,
-                BranchCode = b.BranchCode,
-                BranchName = b.BranchName,
-                City = b.City
-            }).ToList();
+            var branches = await _branchRepository.GetBranchesAsync(includeInactive, cancellationToken);
+            return branches.Select(ToBranchResponse).ToList();
         }
 
         public async Task<BranchResponse?> GetBranchByIdAsync(Guid branchId, CancellationToken cancellationToken)
         {
             var b = await _branchRepository.GetByIdAsync(branchId, cancellationToken);
             if (b == null) return null;
-            return new BranchResponse
+            return ToBranchResponse(b);
+        }
+
+        public async Task<BranchResponse> AddBranchAsync(CreateBranchRequest request, CancellationToken cancellationToken)
+        {
+            var branch = new BookingSystem_Explore.Domain.Entities.Branch
             {
-                BranchId = b.BranchId,
-                BranchCode = b.BranchCode,
-                BranchName = b.BranchName,
-                City = b.City
+                BranchId = Guid.NewGuid(),
+                CreatedDate = DateTime.UtcNow
             };
+
+            Apply(branch, request);
+            await _branchRepository.AddAsync(branch, cancellationToken);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            return ToBranchResponse(branch);
+        }
+
+        public async Task<BranchResponse?> UpdateBranchAsync(Guid branchId, UpdateBranchRequest request, CancellationToken cancellationToken)
+        {
+            var branch = await _branchRepository.GetByIdAsync(branchId, cancellationToken);
+            if (branch is null)
+            {
+                return null;
+            }
+
+            Apply(branch, request);
+            branch.UpdatedDate = DateTime.UtcNow;
+            await _branchRepository.UpdateAsync(branch, cancellationToken);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            return ToBranchResponse(branch);
         }
 
         public async Task<IReadOnlyList<BranchServiceResponse>> GetBranchServicesAsync(Guid branchId, CancellationToken cancellationToken)
@@ -96,6 +113,34 @@ namespace BookingSystem_Explore.BusinessLibrary.Services
                 DurationMinutes = branchService.Service?.DurationMinutes ?? 0,
                 Price = branchService.Price,
                 IsActive = branchService.IsActive
+            };
+        }
+
+        private static void Apply(BookingSystem_Explore.Domain.Entities.Branch branch, CreateBranchRequest request)
+        {
+            branch.BranchCode = request.BranchCode.Trim();
+            branch.BranchName = request.BranchName.Trim();
+            branch.Address = request.Address.Trim();
+            branch.City = request.City.Trim();
+            branch.Province = request.Province.Trim();
+            branch.ContactNumber = request.ContactNumber.Trim();
+            branch.TimeZoneId = request.TimeZoneId.Trim();
+            branch.IsActive = request.IsActive;
+        }
+
+        private static BranchResponse ToBranchResponse(BookingSystem_Explore.Domain.Entities.Branch branch)
+        {
+            return new BranchResponse
+            {
+                BranchId = branch.BranchId,
+                BranchCode = branch.BranchCode,
+                BranchName = branch.BranchName,
+                Address = branch.Address,
+                City = branch.City,
+                Province = branch.Province,
+                ContactNumber = branch.ContactNumber,
+                TimeZoneId = branch.TimeZoneId,
+                IsActive = branch.IsActive
             };
         }
     }

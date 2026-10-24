@@ -17,12 +17,6 @@ namespace BookingSystem_Explore.BusinessLibrary.Services
             _tokenService = tokenService;
         }
 
-        public async Task<IReadOnlyList<object>> GetAllNotificationsAsync(CancellationToken cancellationToken)
-        {
-            var notifications = await _notificationRepository.GetAllAsync(cancellationToken);
-            return notifications.Select(ToResponse).ToList();
-        }
-
         public async Task<IReadOnlyList<object>> GetAppointmentNotificationsAsync(Guid appointmentId, string managementToken, CancellationToken cancellationToken)
         {
             var appointment = await _appointmentRepository.GetByIdAsync(appointmentId, cancellationToken);

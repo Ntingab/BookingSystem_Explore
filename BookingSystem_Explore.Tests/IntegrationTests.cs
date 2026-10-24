@@ -5,8 +5,6 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.EntityFrameworkCore;
 using BookingSystem_Explore.Infrastructure.Persistence;
-using BookingSystem_Explore.Infrastructure.Security;
-using Microsoft.Extensions.Options;
 using System.Net.Http.Headers;
 using Xunit;
 
@@ -76,12 +74,11 @@ namespace BookingSystem_Explore.Tests
         {
             var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
             client.DefaultRequestHeaders.Add("X-Client-Id", "booking-ui");
-            client.DefaultRequestHeaders.Add("X-Client-Secret", "Change-This-Client-Secret");
             client.DefaultRequestHeaders.Add("X-Session-Id", Guid.NewGuid().ToString("N"));
-            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", TestJwtTokenFactory.Create("read write"));
-
-            var phoneEncryptionService = new PhoneEncryptionService(
-                Options.Create(new PhoneEncryptionOptions { Key = "Change-This-Phone-Encryption-Key" }));
+            var tokenResponse = await client.PostAsJsonAsync("/api/v1/auth/token", new { ClientId = "booking-ui" });
+            tokenResponse.EnsureSuccessStatusCode();
+            var token = await tokenResponse.Content.ReadFromJsonAsync<AccessTokenResponse>();
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token!.AccessToken);
 
             // 1 - get branches
             var branchesResp = await client.GetAsync("/api/v1/branches");
@@ -110,7 +107,7 @@ namespace BookingSystem_Explore.Tests
             {
                 BranchServiceId = branchServiceId,
                 AppointmentSlotId = slotId,
-                Customer = new CreateAppointmentRequest.CustomerDto { FirstName = "IT", LastName = "Test", EmailAddress = "it@test.com", PhoneNumber = phoneEncryptionService.Encrypt("123") },
+                Customer = new CreateAppointmentRequest.CustomerDto { FirstName = "IT", LastName = "Test", EmailAddress = "it@test.com", PhoneNumber = "123" },
                 Notes = "integration test"
             };
 
@@ -129,5 +126,7 @@ namespace BookingSystem_Explore.Tests
             var cancelResp = await client.PatchAsync($"/api/v1/appointments/{created.AppointmentId}/cancel", null);
             cancelResp.EnsureSuccessStatusCode();
         }
+
+        private sealed record AccessTokenResponse(string AccessToken, DateTime ExpiresAtUtc);
     }
 }

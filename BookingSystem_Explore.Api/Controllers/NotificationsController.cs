@@ -17,14 +17,6 @@ public class NotificationsController : ControllerBase
         _notificationService = notificationService;
     }
 
-    [HttpGet("/api/v{version:apiVersion}/notifications")]
-    [ProducesResponseType(typeof(IEnumerable<object>), 200)]
-    public async Task<ActionResult<IEnumerable<object>>> GetAllNotificationsAsync(CancellationToken cancellationToken = default)
-    {
-        var list = await _notificationService.GetAllNotificationsAsync(cancellationToken);
-        return Ok(list);
-    }
-
     [HttpGet]
     [ProducesResponseType(typeof(IEnumerable<object>), 200)]
     [ProducesResponseType(401)]
