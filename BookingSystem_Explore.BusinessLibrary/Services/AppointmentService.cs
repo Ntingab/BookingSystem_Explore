@@ -63,17 +63,21 @@ namespace BookingSystem_Explore.BusinessLibrary.Services
             var occupied = await _appointmentRepository.IsSlotOccupiedAsync(slot.AppointmentSlotId, cancellationToken);
             if (occupied) throw new InvalidOperationException("Slot already occupied");
 
-            // create customer
-            var customer = new Customer
+            var emailAddress = request.Customer.EmailAddress.Trim();
+            var customer = await _customerRepository.GetByEmailAddressAsync(emailAddress, cancellationToken);
+            if (customer == null)
             {
-                CustomerId = Guid.NewGuid(),
-                FirstName = request.Customer.FirstName,
-                LastName = request.Customer.LastName,
-                EmailAddress = request.Customer.EmailAddress,
-                PhoneNumber = request.Customer.PhoneNumber,
-                CreatedDate = DateTime.UtcNow
-            };
-            await _customerRepository.AddAsync(customer, cancellationToken);
+                customer = new Customer
+                {
+                    CustomerId = Guid.NewGuid(),
+                    FirstName = request.Customer.FirstName,
+                    LastName = request.Customer.LastName,
+                    EmailAddress = emailAddress,
+                    PhoneNumber = request.Customer.PhoneNumber,
+                    CreatedDate = DateTime.UtcNow
+                };
+                await _customerRepository.AddAsync(customer, cancellationToken);
+            }
 
             // create appointment and token
             var appointment = new Appointment

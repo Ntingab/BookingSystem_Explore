@@ -23,5 +23,13 @@ namespace BookingSystem_Explore.BusinessLibrary.Repositories
             var c = _store.Customers.FirstOrDefault(x => x.CustomerId == customerId);
             return Task.FromResult(c);
         }
+
+        public Task<Customer?> GetByEmailAddressAsync(string emailAddress, CancellationToken cancellationToken)
+        {
+            var normalizedEmailAddress = emailAddress.Trim();
+            var customer = _store.Customers.FirstOrDefault(x =>
+                string.Equals(x.EmailAddress.Trim(), normalizedEmailAddress, StringComparison.OrdinalIgnoreCase));
+            return Task.FromResult(customer);
+        }
     }
 }

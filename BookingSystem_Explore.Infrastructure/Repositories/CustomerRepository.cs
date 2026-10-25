@@ -22,5 +22,12 @@ namespace BookingSystem_Explore.Infrastructure.Repositories
         {
             return await _db.Customers.AsNoTracking().FirstOrDefaultAsync(c => c.CustomerId == customerId, cancellationToken);
         }
+
+        public async Task<Customer?> GetByEmailAddressAsync(string emailAddress, CancellationToken cancellationToken)
+        {
+            // Equality uses the column's database collation, matching the unique constraint's semantics.
+            return await _db.Customers.AsNoTracking()
+                .FirstOrDefaultAsync(c => c.EmailAddress == emailAddress, cancellationToken);
+        }
     }
 }

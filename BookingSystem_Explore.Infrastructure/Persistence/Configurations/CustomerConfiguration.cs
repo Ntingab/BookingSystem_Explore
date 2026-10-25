@@ -16,6 +16,7 @@ namespace BookingSystem_Explore.Infrastructure.Persistence.Configurations
             builder.Property(c => c.PhoneNumber).IsRequired().HasMaxLength(512);
             builder.Property(c => c.CreatedDate).IsRequired();
             builder.Property(c => c.UpdatedDate);
+            builder.HasIndex(c => c.EmailAddress).IsUnique().HasDatabaseName("UQ_Customers_EmailAddress");
 
             builder.HasMany(c => c.Appointments).WithOne(a => a.Customer).HasForeignKey(a => a.CustomerId).OnDelete(DeleteBehavior.Restrict);
         }

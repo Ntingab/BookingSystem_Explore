@@ -54,6 +54,24 @@ public sealed class AuthController : ControllerBase
         return Ok(new TokenResponse(new JwtSecurityTokenHandler().WriteToken(token), expiresAtUtc));
     }
 
-    public sealed record TokenRequest(string ClientId);
-    public sealed record TokenResponse(string AccessToken, DateTime ExpiresAtUtc);
+    public sealed class TokenRequest
+    {
+        public string ClientId { get; set; } = string.Empty;
+    }
+
+    public sealed class TokenResponse
+    {
+        public TokenResponse()
+        {
+        }
+
+        public TokenResponse(string accessToken, DateTime expiresAtUtc)
+        {
+            AccessToken = accessToken;
+            ExpiresAtUtc = expiresAtUtc;
+        }
+
+        public string AccessToken { get; set; } = string.Empty;
+        public DateTime ExpiresAtUtc { get; set; }
+    }
 }

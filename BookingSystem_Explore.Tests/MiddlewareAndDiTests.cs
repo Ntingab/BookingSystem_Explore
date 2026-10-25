@@ -34,6 +34,21 @@ namespace BookingSystem_Explore.Tests
         }
 
         [Fact]
+        public async Task AuthToken_WithXmlAcceptHeader_ReturnsXmlResponse()
+        {
+            var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/xml"));
+
+            var response = await client.PostAsJsonAsync("/api/v1/auth/token", new { ClientId = "booking-ui" });
+
+            response.EnsureSuccessStatusCode();
+            Assert.Equal("application/xml", response.Content.Headers.ContentType?.MediaType);
+            var content = await response.Content.ReadAsStringAsync();
+            Assert.Contains("<AccessToken>", content);
+            Assert.Contains("<ExpiresAtUtc>", content);
+        }
+
+        [Fact]
         public async Task ExceptionHandlingMiddleware_DuplicateBranchCode_ReturnsConflictMessage()
         {
             var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });

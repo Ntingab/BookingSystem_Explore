@@ -78,6 +78,64 @@ namespace BookingSystem_Explore.Tests
         }
 
         [Fact]
+        public async Task BookAppointment_WithExistingCustomerEmail_ReusesCustomer()
+        {
+            var store = new InMemoryDataStore();
+            var existingCustomer = new BookingSystem_Explore.Domain.Entities.Customer
+            {
+                CustomerId = Guid.NewGuid(),
+                FirstName = "Existing",
+                LastName = "Customer",
+                EmailAddress = "existing@example.com",
+                PhoneNumber = "1234567890",
+                CreatedDate = DateTime.UtcNow
+            };
+            store.Customers.Add(existingCustomer);
+
+            var branchService = store.BranchServices.First();
+            var service = store.Services.First(x => x.ServiceId == branchService.ServiceId);
+            var start = DateTime.UtcNow.AddHours(1);
+            var slot = new BookingSystem_Explore.Domain.Entities.AppointmentSlot
+            {
+                AppointmentSlotId = Guid.NewGuid(),
+                BranchServiceId = branchService.BranchServiceId,
+                StartDateTimeUtc = start,
+                EndDateTimeUtc = start.AddMinutes(service.DurationMinutes),
+                CreatedDate = DateTime.UtcNow
+            };
+            store.Slots.Add(slot);
+
+            var appointmentRepo = new InMemoryAppointmentRepository(store);
+            var sut = new AppointmentService(
+                appointmentRepo,
+                new InMemoryAppointmentSlotRepository(store),
+                new InMemoryBranchRepository(store),
+                new InMemoryServiceRepository(store),
+                new InMemoryCustomerRepository(store),
+                new InMemoryNotificationRepository(store),
+                new InMemoryUnitOfWork(),
+                new BookingSystem_Explore.Infrastructure.Security.TokenService(),
+                new NullLogger<AppointmentService>());
+
+            var response = await sut.BookAppointmentAsync(new CreateAppointmentRequest
+            {
+                BranchServiceId = branchService.BranchServiceId,
+                AppointmentSlotId = slot.AppointmentSlotId,
+                Customer = new CreateAppointmentRequest.CustomerDto
+                {
+                    FirstName = "Different",
+                    LastName = "Details",
+                    EmailAddress = "  EXISTING@example.com  ",
+                    PhoneNumber = "0987654321"
+                }
+            }, CancellationToken.None);
+
+            Assert.Single(store.Customers);
+            var appointment = Assert.Single(store.Appointments, x => x.AppointmentId == response.AppointmentId);
+            Assert.Equal(existingCustomer.CustomerId, appointment.CustomerId);
+        }
+
+        [Fact]
         public async Task GetAppointment_WithValidToken_ReturnsAppointment()
         {
             // Arrange
