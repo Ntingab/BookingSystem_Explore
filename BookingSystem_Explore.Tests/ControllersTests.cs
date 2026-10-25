@@ -18,7 +18,7 @@ namespace BookingSystem_Explore.Tests
         {
             var store = new InMemoryDataStore();
             var branchRepo = new InMemoryBranchRepository(store);
-            var branchService = new BranchService(branchRepo, new InMemoryUnitOfWork());
+            var branchService = new BranchService(branchRepo, new InMemoryUnitOfWork(), NullLogger<BranchService>.Instance);
             var ctrl = new BranchesController(branchService);
 
             var result = await ctrl.GetBranchesAsync(CancellationToken.None);
@@ -31,7 +31,10 @@ namespace BookingSystem_Explore.Tests
         public async Task BranchesController_AddAndUpdateBranchAndService_Works()
         {
             var store = new InMemoryDataStore();
-            var branchService = new BranchService(new InMemoryBranchRepository(store), new InMemoryUnitOfWork());
+            var branchService = new BranchService(
+                new InMemoryBranchRepository(store),
+                new InMemoryUnitOfWork(),
+                NullLogger<BranchService>.Instance);
             var controller = new BranchesController(branchService)
             {
                 ControllerContext = new ControllerContext { HttpContext = new Microsoft.AspNetCore.Http.DefaultHttpContext() }
@@ -84,7 +87,10 @@ namespace BookingSystem_Explore.Tests
         {
             var store = new InMemoryDataStore();
             var serviceRepo = new InMemoryServiceRepository(store);
-            var serviceService = new BookingSystem_Explore.BusinessLibrary.Services.ServiceService(serviceRepo, new InMemoryUnitOfWork());
+            var serviceService = new BookingSystem_Explore.BusinessLibrary.Services.ServiceService(
+                serviceRepo,
+                new InMemoryUnitOfWork(),
+                NullLogger<BookingSystem_Explore.BusinessLibrary.Services.ServiceService>.Instance);
 
             var ctrl = new ServicesController(serviceService);
 

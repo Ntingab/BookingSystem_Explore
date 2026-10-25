@@ -4,6 +4,7 @@
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
 USER $APP_UID
 WORKDIR /app
+ENV ASPNETCORE_HTTP_PORTS=8080
 EXPOSE 8080
 EXPOSE 8081
 
@@ -13,15 +14,18 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY ["BookingSystem_Explore.Api/BookingSystem_Explore.Api.csproj", "BookingSystem_Explore.Api/"]
+COPY ["BookingSystem_Explore.BusinessLibrary/BookingSystem_Explore.BusinessLibrary.csproj", "BookingSystem_Explore.BusinessLibrary/"]
+COPY ["BookingSystem_Explore.Infrastructure/BookingSystem_Explore.Infrastructure.csproj", "BookingSystem_Explore.Infrastructure/"]
+COPY ["BookingSystem_Explore.Domain/BookingSystem_Explore.Domain.csproj", "BookingSystem_Explore.Domain/"]
 RUN dotnet restore "./BookingSystem_Explore.Api/BookingSystem_Explore.Api.csproj"
 COPY . .
 WORKDIR "/src/BookingSystem_Explore.Api"
-RUN dotnet build "./BookingSystem_Explore.Api.csproj" -c $BUILD_CONFIGURATION -o /app/build
+RUN dotnet build "./BookingSystem_Explore.Api.csproj" -c $BUILD_CONFIGURATION -o /app/build --no-restore
 
 # This stage is used to publish the service project to be copied to the final stage
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
-RUN dotnet publish "./BookingSystem_Explore.Api.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "./BookingSystem_Explore.Api.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false --no-restore
 
 # This stage is used in production or when running from VS in regular mode (Default when not using the Debug configuration)
 FROM base AS final

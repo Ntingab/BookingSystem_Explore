@@ -2,6 +2,7 @@ using BookingSystem_Explore.BusinessLibrary.DTOs.Responses;
 using BookingSystem_Explore.BusinessLibrary.DTOs.Requests;
 using BookingSystem_Explore.BusinessLibrary.Interfaces.Services;
 using BookingSystem_Explore.Domain.Interfaces.Repositories;
+using Microsoft.Extensions.Logging;
 
 namespace BookingSystem_Explore.BusinessLibrary.Services
 {
@@ -9,11 +10,16 @@ namespace BookingSystem_Explore.BusinessLibrary.Services
     {
         private readonly IServiceRepository _serviceRepository;
         private readonly BookingSystem_Explore.Domain.Interfaces.IUnitOfWork _unitOfWork;
+        private readonly ILogger<ServiceService> _logger;
 
-        public ServiceService(IServiceRepository serviceRepository, BookingSystem_Explore.Domain.Interfaces.IUnitOfWork unitOfWork)
+        public ServiceService(
+            IServiceRepository serviceRepository,
+            BookingSystem_Explore.Domain.Interfaces.IUnitOfWork unitOfWork,
+            ILogger<ServiceService> logger)
         {
             _serviceRepository = serviceRepository;
             _unitOfWork = unitOfWork;
+            _logger = logger;
         }
 
         public async Task<IReadOnlyList<ServiceResponse>> GetServicesAsync(CancellationToken cancellationToken)
@@ -31,40 +37,58 @@ namespace BookingSystem_Explore.BusinessLibrary.Services
 
         public async Task<ServiceResponse> AddServiceAsync(CreateServiceRequest request, CancellationToken cancellationToken)
         {
-            var service = new BookingSystem_Explore.Domain.Entities.Service
+            try
             {
-                ServiceId = Guid.NewGuid(),
-                ServiceName = request.ServiceName,
-                DurationMinutes = request.DurationMinutes,
-                Description = request.Description,
-                IsActive = request.IsActive,
-                CreatedDate = DateTime.UtcNow
-            };
+                var service = new BookingSystem_Explore.Domain.Entities.Service
+                {
+                    ServiceId = Guid.NewGuid(),
+                    ServiceName = request.ServiceName,
+                    DurationMinutes = request.DurationMinutes,
+                    Description = request.Description,
+                    IsActive = request.IsActive,
+                    CreatedDate = DateTime.UtcNow
+                };
 
-            await _serviceRepository.AddAsync(service, cancellationToken);
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
+                await _serviceRepository.AddAsync(service, cancellationToken);
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-            return ToResponse(service);
+                return ToResponse(service);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to add service {ServiceName}", request.ServiceName);
+                throw;
+            }
+           
         }
 
         public async Task<ServiceResponse?> UpdateServiceAsync(Guid serviceId, UpdateServiceRequest request, CancellationToken cancellationToken)
         {
-            var service = await _serviceRepository.GetByIdAsync(serviceId, cancellationToken);
-            if (service == null)
+            try
             {
-                return null;
+                var service = await _serviceRepository.GetByIdAsync(serviceId, cancellationToken);
+                if (service == null)
+                {
+                    return null;
+                }
+
+                service.ServiceName = request.ServiceName;
+                service.DurationMinutes = request.DurationMinutes;
+                service.Description = request.Description;
+                service.IsActive = request.IsActive;
+                service.UpdatedDate = DateTime.UtcNow;
+
+                await _serviceRepository.UpdateAsync(service, cancellationToken);
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+                return ToResponse(service);
             }
-
-            service.ServiceName = request.ServiceName;
-            service.DurationMinutes = request.DurationMinutes;
-            service.Description = request.Description;
-            service.IsActive = request.IsActive;
-            service.UpdatedDate = DateTime.UtcNow;
-
-            await _serviceRepository.UpdateAsync(service, cancellationToken);
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
-
-            return ToResponse(service);
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to update service {ServiceId}", serviceId);
+                throw;
+            }
+            
         }
 
         private static ServiceResponse ToResponse(BookingSystem_Explore.Domain.Entities.Service service)

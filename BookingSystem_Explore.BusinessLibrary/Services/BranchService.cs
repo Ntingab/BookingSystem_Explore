@@ -1,7 +1,8 @@
-using BookingSystem_Explore.BusinessLibrary.DTOs.Responses;
 using BookingSystem_Explore.BusinessLibrary.DTOs.Requests;
+using BookingSystem_Explore.BusinessLibrary.DTOs.Responses;
 using BookingSystem_Explore.BusinessLibrary.Interfaces.Services;
 using BookingSystem_Explore.Domain.Interfaces.Repositories;
+using Microsoft.Extensions.Logging;
 
 namespace BookingSystem_Explore.BusinessLibrary.Services
 {
@@ -9,11 +10,16 @@ namespace BookingSystem_Explore.BusinessLibrary.Services
     {
         private readonly IBranchRepository _branchRepository;
         private readonly BookingSystem_Explore.Domain.Interfaces.IUnitOfWork _unitOfWork;
+        private readonly ILogger<BranchService> _logger;
 
-        public BranchService(IBranchRepository branchRepository, BookingSystem_Explore.Domain.Interfaces.IUnitOfWork unitOfWork)
+        public BranchService(
+            IBranchRepository branchRepository,
+            BookingSystem_Explore.Domain.Interfaces.IUnitOfWork unitOfWork,
+            ILogger<BranchService> logger)
         {
             _branchRepository = branchRepository;
             _unitOfWork = unitOfWork;
+            _logger = logger;
         }
 
         public async Task<IReadOnlyList<BranchResponse>> GetBranchesAsync(CancellationToken cancellationToken, bool includeInactive = false)
@@ -31,31 +37,49 @@ namespace BookingSystem_Explore.BusinessLibrary.Services
 
         public async Task<BranchResponse> AddBranchAsync(CreateBranchRequest request, CancellationToken cancellationToken)
         {
-            var branch = new BookingSystem_Explore.Domain.Entities.Branch
+            try
             {
-                BranchId = Guid.NewGuid(),
-                CreatedDate = DateTime.UtcNow
-            };
+                var branch = new BookingSystem_Explore.Domain.Entities.Branch
+                {
+                    BranchId = Guid.NewGuid(),
+                    CreatedDate = DateTime.UtcNow
+                };
 
-            Apply(branch, request);
-            await _branchRepository.AddAsync(branch, cancellationToken);
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
-            return ToBranchResponse(branch);
+                Apply(branch, request);
+                await _branchRepository.AddAsync(branch, cancellationToken);
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+                return ToBranchResponse(branch);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to add branch {BranchCode}", request.BranchCode);
+                throw;
+            }
+            
         }
 
         public async Task<BranchResponse?> UpdateBranchAsync(Guid branchId, UpdateBranchRequest request, CancellationToken cancellationToken)
         {
-            var branch = await _branchRepository.GetByIdAsync(branchId, cancellationToken);
-            if (branch is null)
+            try
             {
-                return null;
-            }
+                var branch = await _branchRepository.GetByIdAsync(branchId, cancellationToken);
+                if (branch is null)
+                {
+                    return null;
+                }
 
-            Apply(branch, request);
-            branch.UpdatedDate = DateTime.UtcNow;
-            await _branchRepository.UpdateAsync(branch, cancellationToken);
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
-            return ToBranchResponse(branch);
+                Apply(branch, request);
+                branch.UpdatedDate = DateTime.UtcNow;
+                await _branchRepository.UpdateAsync(branch, cancellationToken);
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+                return ToBranchResponse(branch);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to update branch {BranchId}", branchId);
+                throw;
+            }
+           
         }
 
         public async Task<IReadOnlyList<BranchServiceResponse>> GetBranchServicesAsync(Guid branchId, CancellationToken cancellationToken)
@@ -66,40 +90,67 @@ namespace BookingSystem_Explore.BusinessLibrary.Services
 
         public async Task<BranchServiceResponse> AddBranchServiceAsync(Guid branchId, CreateBranchServiceRequest request, CancellationToken cancellationToken)
         {
-            var branchService = new BookingSystem_Explore.Domain.Entities.BranchService
+
+            try
             {
-                BranchServiceId = Guid.NewGuid(),
-                BranchId = branchId,
-                ServiceId = request.ServiceId,
-                Price = request.Price,
-                IsActive = request.IsActive,
-                CreatedDate = DateTime.UtcNow
-            };
+                var branchService = new BookingSystem_Explore.Domain.Entities.BranchService
+                {
+                    BranchServiceId = Guid.NewGuid(),
+                    BranchId = branchId,
+                    ServiceId = request.ServiceId,
+                    Price = request.Price,
+                    IsActive = request.IsActive,
+                    CreatedDate = DateTime.UtcNow
+                };
 
-            await _branchRepository.AddBranchServiceAsync(branchService, cancellationToken);
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
+                await _branchRepository.AddBranchServiceAsync(branchService, cancellationToken);
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-            var created = await _branchRepository.GetBranchServiceByIdAsync(branchService.BranchServiceId, cancellationToken);
-            return ToBranchServiceResponse(created ?? branchService);
+                var created = await _branchRepository.GetBranchServiceByIdAsync(branchService.BranchServiceId, cancellationToken);
+                return ToBranchServiceResponse(created ?? branchService);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(
+                    ex,
+                    "Failed to add service {ServiceId} to branch {BranchId}",
+                    request.ServiceId,
+                    branchId);
+                throw;
+            }
+            
         }
 
         public async Task<BranchServiceResponse?> UpdateBranchServiceAsync(Guid branchId, Guid branchServiceId, UpdateBranchServiceRequest request, CancellationToken cancellationToken)
         {
-            var existing = await _branchRepository.GetBranchServiceByIdAsync(branchServiceId, cancellationToken);
-            if (existing == null || existing.BranchId != branchId)
+            try
             {
-                return null;
+                var existing = await _branchRepository.GetBranchServiceByIdAsync(branchServiceId, cancellationToken);
+                if (existing == null || existing.BranchId != branchId)
+                {
+                    return null;
+                }
+
+                existing.Price = request.Price;
+                existing.IsActive = request.IsActive;
+                existing.UpdatedDate = DateTime.UtcNow;
+
+                await _branchRepository.UpdateBranchServiceAsync(existing, cancellationToken);
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+                var updated = await _branchRepository.GetBranchServiceByIdAsync(branchServiceId, cancellationToken);
+                return ToBranchServiceResponse(updated ?? existing);
             }
-
-            existing.Price = request.Price;
-            existing.IsActive = request.IsActive;
-            existing.UpdatedDate = DateTime.UtcNow;
-
-            await _branchRepository.UpdateBranchServiceAsync(existing, cancellationToken);
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
-
-            var updated = await _branchRepository.GetBranchServiceByIdAsync(branchServiceId, cancellationToken);
-            return ToBranchServiceResponse(updated ?? existing);
+            catch (Exception ex)
+            {
+                _logger.LogError(
+                    ex,
+                    "Failed to update branch service {BranchServiceId} for branch {BranchId}",
+                    branchServiceId,
+                    branchId);
+                throw;
+            }
+           
         }
 
         private static BranchServiceResponse ToBranchServiceResponse(BookingSystem_Explore.Domain.Entities.BranchService branchService)
