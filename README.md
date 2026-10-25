@@ -7,7 +7,13 @@ git clone https://github.com/Ntingab/BookingSystem_Explore.git
 cd BookingSystem_Explore
 ```
 
-If Visual Studio currently has another repo open, use **File > Close Solution** first, then open this one.
+If Visual Studio currently has another repo open, use **File > Close Solution** first. Then open the database folder in File Explorer:
+
+```powershell
+explorer "C:\Work\BookingSystem_Explore\database"
+```
+
+Afterward, open this repository's solution.
 
 ## 2) Open the solution
 
@@ -21,27 +27,46 @@ Or from terminal:
 start BookingSystem_Explore.slnx
 ```
 
-## 3) Execute the SQL script (SQL Server)
+## 3) Create or update the SQL Server database
 
-Script path:
+For a new local database, run:
+
+- `database/booking_data.sql`
+
+The script creates the `BookingSystem` database and its tables, then adds repeatable sample data. It does not delete an existing database unless its `@AllowDestructiveReset` option is explicitly enabled.
+
+For an older database where `Appointments.ManagementTokenHash` is still nullable, also run:
 
 - `BookingSystem_Explore.Infrastructure/Migrations/20261017_MakeManagementTokenHashNotNull.sql`
 
 ### Option A: SSMS
 1. Connect to your SQL Server instance.
-2. Select the target database (example: `BookingSystem`).
-3. Open the script file above.
-4. Execute it.
+2. Open the required script listed above.
+3. Execute it.
 
 ### Option B: sqlcmd
 
 ```powershell
-sqlcmd -S <SERVER_NAME> -d BookingSystem -E -i "BookingSystem_Explore.Infrastructure\Migrations\20261017_MakeManagementTokenHashNotNull.sql"
+sqlcmd -S <SERVER_NAME> -E -i "database\booking_data.sql"
 ```
 
-> Replace `<SERVER_NAME>` with your SQL Server instance (example: `JHB-BASIL\\SQLEXPRESS01`).
+Replace `<SERVER_NAME>` with your local SQL Server instance.
 
-## 4) Run the API with HTTPS
+## 4) Configure local development secrets
+
+The repository does not contain a machine-specific connection string or production keys. In Visual Studio, right-click `BookingSystem_Explore.Api`, select **Manage User Secrets**, and add:
+
+```json
+{
+  "ConnectionStrings": {
+	"DefaultConnection": "Server=<SERVER_NAME>;Database=BookingSystem;Trusted_Connection=True;MultipleActiveResultSets=true;Encrypt=True;TrustServerCertificate=True;"
+  }
+}
+```
+
+Development generates temporary JWT and phone-encryption keys when they are absent. Production must provide `ClientAccess:Jwt:SigningKey` and `Security:PhoneEncryption:Key` through a secure configuration provider. Never commit real connection strings, passwords, or keys.
+
+## 5) Run the API with HTTPS
 
 ### Visual Studio
 1. Set startup project to `BookingSystem_Explore.Api`.
@@ -64,27 +89,32 @@ Swagger UI:
 Health endpoint:
 - `https://localhost:7086/health`
 
-## 5) Run the API with Docker
+## 6) Run the API with Docker
 
 ### Visual Studio
 1. Choose launch profile **Container (Dockerfile)**.
 2. Run the project.
+3. Use the container URL displayed by Visual Studio. Visual Studio supplies the development certificate and maps the published ports.
 
-### Command line
+### Command line (HTTP development container)
+
+Build the image:
 
 ```powershell
 docker build -t bookingsystem-explore -f BookingSystem_Explore.Api/Dockerfile .
-docker run --rm -p 8080:8080 -p 8081:8081 --name bookingsystem-explore bookingsystem-explore
 ```
 
-Container URLs:
-- `http://localhost:8080`
-- `https://localhost:8081`
+Create an environment file outside the repository containing `ASPNETCORE_ENVIRONMENT=Development` and `ConnectionStrings__DefaultConnection`. Then run:
 
-Swagger (container):
-- `http://localhost:8080/`
+```powershell
+docker run --rm -p 8080:8080 --env-file C:\secure\booking-api.env --name bookingsystem-explore bookingsystem-explore
+```
 
-## 6) Run the Blazor UI project
+The command-line container URL and Swagger UI are `http://localhost:8080/`. Port `8081` requires explicitly mounting and configuring an HTTPS certificate; `EXPOSE` alone does not enable HTTPS.
+
+When SQL Server runs on the Windows host, a Linux container cannot normally use the host's named instance with `Trusted_Connection=True`. Configure SQL Server on a fixed TCP port and use `host.docker.internal,<PORT>` with appropriate SQL authentication in the external environment file. Do not commit those credentials.
+
+## 7) Run the Blazor WebAssembly UI
 
 The solution now includes a UI project:
 
@@ -108,3 +138,15 @@ The UI calls the API at:
 
 If your API URL is different, update:
 - `BookingSystem_Explore.Ui/wwwroot/appsettings.json`
+
+For example, when the API is the command-line HTTP container above, run the UI with its **http** profile and set `Api:BaseUrl` to `http://localhost:8080/`. An HTTPS UI cannot call an HTTP API because browsers block mixed content. The API URL is used by the browser, so it must be a host-accessible published URL—not an internal Docker container name.
+
+## 8) Run tests
+
+Use Test Explorer in Visual Studio, or run:
+
+```powershell
+dotnet test BookingSystem_Explore.slnx
+```
+
+Application errors are written through Serilog to the console and the configured rolling text log. Business services log operation context and preserve original exceptions when rethrowing them.
